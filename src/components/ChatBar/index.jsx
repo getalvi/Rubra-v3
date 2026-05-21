@@ -1,152 +1,194 @@
 /**
- * ChatBar — the fully glass-blurred chat input
- * Features: auto-resize, file attach, drag-drop, stop, model indicator
+ * ChatBar — glass input bar with live progress status
+ * Fixed: suggestion clicks, progress bar, status text
  */
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, Square, Paperclip, X, ArrowUp } from 'lucide-react'
+import { ArrowUp, Square, Paperclip, X } from 'lucide-react'
 import clsx from 'clsx'
 
-const ALLOWED = '.pdf,.txt,.csv,.xlsx,.xls,.docx,.doc,image/*,application/pdf,text/*'
-
-export default function ChatBar({ onSend, onFile, onStop, isStreaming, disabled }) {
-  const [text,       setText]      = useState('')
-  const [attachment, setAttachment] = useState(null)
-  const [dragOver,   setDragOver]  = useState(false)
-  const taRef   = useRef(null)
-  const fileRef = useRef(null)
+export default function ChatBar({ onSend, onFile, onStop, isStreaming, statusText = '', progress = 0 }) {
+  const [text,       setText]       = useState('')
+  const [dragging,   setDragging]   = useState(false)
+  const [attachment, setAttachment] = useState(null)   // { file, preview }
+  const textareaRef  = useRef(null)
+  const fileInputRef = useRef(null)
 
   // Auto-resize textarea
   useEffect(() => {
-    const el = taRef.current
+    const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
     el.style.height = Math.min(el.scrollHeight, 200) + 'px'
   }, [text])
 
-  useEffect(() => {
-    if (!disabled) taRef.current?.focus()
-  }, [disabled])
-
   const submit = useCallback(() => {
-    if (isStreaming) { onStop?.(); return }
-    const t = text.trim()
-    if (!t && !attachment) return
-    if (attachment) { onFile?.(attachment.file, t) }
-    else            { onSend?.(t) }
-    setText(''); setAttachment(null)
-    taRef.current?.focus()
-  }, [text, attachment, isStreaming, onSend, onFile, onStop])
+    if (isStreaming) return
+    const trimmed = text.trim()
+
+    if (attachment) {
+      onFile?.(attachment.file, trimmed)
+      setAttachment(null)
+      setText('')
+      return
+    }
+
+    if (!trimmed) return
+    onSend?.(trimmed)
+    setText('')
+    // reset height
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
+  }, [text, attachment, isStreaming, onSend, onFile])
 
   const onKey = useCallback(e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      submit()
+    }
   }, [submit])
 
-  const handleFile = useCallback(file => {
-    if (!file) return
-    const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
-    setAttachment({ file, name: file.name, type: file.type, size: file.size, preview })
-  }, [])
+  // Drag-and-drop
+  const onDragOver  = e => { e.preventDefault(); setDragging(true) }
+  const onDragLeave = () => setDragging(false)
+  const onDrop      = e => {
+    e.preventDefault(); setDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) handleFile(file)
+  }
 
-  const canSend = (text.trim() || attachment) && !disabled
+  const handleFile = file => {
+    const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    setAttachment({ file, preview })
+  }
+
+  const canSend = !isStreaming && (text.trim().length > 0 || attachment)
 
   return (
-    <div className="px-4 pb-4 pt-1 shrink-0">
-      {/* ── Outer glow wrapper ── */}
-      <div className="max-w-[780px] mx-auto">
+    <div className="shrink-0 px-4 pb-4 pt-2">
+      {/* ── Progress bar + status ─────────────────────────────────────── */}
+      {isStreaming && (
+        <div className="mb-2 space-y-1 animate-fade-up">
+          {/* Status text */}
+          <div className="flex items-center gap-2 px-1">
+            <span className="text-[12px] text-white/45 font-medium tracking-wide">
+              {statusText || '⚙️ কাজ করছি…'}
+            </span>
+            <span className="text-[11px] text-white/20">
+              {progress > 0 ? `${progress}%` : ''}
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div className="h-[2px] w-full rounded-full bg-white/[0.06] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-brand transition-all duration-500 ease-out"
+              style={{ width: progress > 0 ? `${progress}%` : '100%',
+                       animation: progress === 0 ? 'rubra-indeterminate 1.4s ease infinite' : 'none' }}
+            />
+          </div>
+        </div>
+      )}
 
+      {/* ── Main input card ───────────────────────────────────────────── */}
+      <div
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        className={clsx(
+          'relative rounded-[22px] border backdrop-blur-glass transition-all duration-200',
+          dragging
+            ? 'border-brand/60 bg-brand/[0.07] shadow-brand'
+            : 'border-white/[0.09] bg-white/[0.045] shadow-glass',
+        )}
+      >
         {/* Attachment preview */}
         {attachment && (
-          <div className="mb-2 flex items-start">
-            <div className="relative inline-flex">
-              {attachment.preview
-                ? <img src={attachment.preview} alt="preview" className="h-16 rounded-xl border border-white/[0.08] object-cover" />
-                : (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl glass-card border border-white/[0.08] text-[12.5px] text-white/55">
-                    📎 <span className="max-w-[180px] truncate">{attachment.name}</span>
-                    <span className="text-white/25">{(attachment.size / 1024).toFixed(0)}KB</span>
-                  </div>
-                )
-              }
-              <button
-                onClick={() => setAttachment(null)}
-                className="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] rounded-full bg-bg-raised border border-white/[0.10] flex items-center justify-center text-white/50 hover:text-white hover:bg-brand/80 transition-all"
-              >
-                <X size={10} />
-              </button>
-            </div>
+          <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+            {attachment.preview
+              ? <img src={attachment.preview} alt="" className="h-12 w-12 rounded-lg object-cover border border-white/10" />
+              : <div className="h-10 flex items-center gap-2 px-3 rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/50 text-[12px]">
+                  📎 {attachment.file.name}
+                </div>
+            }
+            <button
+              onClick={() => setAttachment(null)}
+              className="w-5 h-5 flex items-center justify-center rounded-full bg-white/10 text-white/40 hover:text-white/70 hover:bg-white/15 transition-all"
+            >
+              <X size={11} />
+            </button>
           </div>
         )}
 
-        {/* ── Main glass bar ── */}
-        <div
-          className={clsx(
-            'glass-input rounded-2xl transition-all duration-200',
-            dragOver && 'border-brand/50 shadow-[0_0_0_3px_rgba(192,57,43,0.12)]'
-          )}
-          onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0]) }}
-        >
-          <div className="flex items-end gap-1 px-3 py-2.5">
-            {/* Attach */}
+        {/* Drag overlay */}
+        {dragging && (
+          <div className="absolute inset-0 rounded-[22px] flex items-center justify-center bg-brand/[0.08] border-2 border-dashed border-brand/40 z-10">
+            <p className="text-brand/80 text-[13px] font-medium">ফাইল এখানে ছেড়ে দাও</p>
+          </div>
+        )}
+
+        <div className="flex items-end gap-2 px-3 py-2.5">
+          {/* Attach button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isStreaming}
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-white/25 hover:text-white/55 hover:bg-white/[0.06] transition-all shrink-0 mb-0.5 disabled:opacity-30"
+            title="ফাইল যোগ করো"
+          >
+            <Paperclip size={16} />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
+            accept="image/*,.pdf,.txt,.md,.csv,.json,.py,.js,.ts"
+          />
+
+          {/* Textarea */}
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={onKey}
+            placeholder={isStreaming ? (statusText || 'উত্তর আসছে…') : 'Message RUBRA…'}
+            disabled={isStreaming}
+            className={clsx(
+              'flex-1 resize-none bg-transparent outline-none text-[14.5px] leading-relaxed',
+              'text-white/85 placeholder:text-white/22 py-1 min-h-[24px] max-h-[200px]',
+              'disabled:cursor-not-allowed'
+            )}
+          />
+
+          {/* Send / Stop button */}
+          {isStreaming ? (
             <button
-              onClick={() => fileRef.current?.click()}
-              disabled={disabled}
-              className="w-[34px] h-[34px] flex items-center justify-center rounded-xl text-white/28 hover:text-white/60 hover:bg-white/[0.06] transition-all disabled:opacity-30"
-              title="Attach file"
+              onClick={onStop}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-brand/80 hover:bg-brand text-white transition-all shrink-0 mb-0.5"
+              title="থামাও"
             >
-              <Paperclip size={16} />
+              <Square size={13} fill="currentColor" />
             </button>
-            <input ref={fileRef} type="file" accept={ALLOWED} className="hidden"
-              onChange={e => { handleFile(e.target.files?.[0]); e.target.value = '' }} />
-
-            {/* Textarea */}
-            <textarea
-              ref={taRef}
-              rows={1}
-              value={text}
-              onChange={e => setText(e.target.value)}
-              onKeyDown={onKey}
-              disabled={disabled}
-              placeholder={isStreaming ? 'Generating…' : 'Message RUBRA…'}
-              className={clsx(
-                'flex-1 bg-transparent resize-none outline-none',
-                'text-[14.5px] text-white/88 placeholder-white/22 leading-relaxed',
-                'font-sans py-1.5 max-h-[200px] overflow-y-auto',
-                'disabled:opacity-40'
-              )}
-            />
-
-            {/* Send / Stop */}
+          ) : (
             <button
               onClick={submit}
-              disabled={!canSend && !isStreaming}
+              disabled={!canSend}
               className={clsx(
-                'w-[34px] h-[34px] flex items-center justify-center rounded-xl transition-all duration-150 shrink-0',
-                isStreaming
-                  ? 'bg-brand/18 border border-brand/35 text-brand hover:bg-brand/25'
-                  : canSend
-                    ? 'bg-brand text-white hover:bg-brand-dark shadow-send hover:scale-105 active:scale-95'
-                    : 'bg-white/[0.06] text-white/18 cursor-not-allowed border border-white/[0.06]'
+                'w-9 h-9 flex items-center justify-center rounded-full transition-all shrink-0 mb-0.5',
+                canSend
+                  ? 'bg-brand hover:bg-brand/85 text-white shadow-brand active:scale-95'
+                  : 'bg-white/[0.05] text-white/15 cursor-not-allowed'
               )}
-              title={isStreaming ? 'Stop' : 'Send'}
+              title="পাঠাও (Enter)"
             >
-              {isStreaming ? <Square size={13} fill="currentColor" /> : <ArrowUp size={16} strokeWidth={2.2} />}
+              <ArrowUp size={16} />
             </button>
-          </div>
-
-          {/* Drag overlay */}
-          {dragOver && (
-            <div className="absolute inset-0 rounded-2xl bg-brand/[0.07] border border-brand/30 flex items-center justify-center pointer-events-none">
-              <span className="text-[13px] text-brand/80 font-medium">Drop to attach</span>
-            </div>
           )}
         </div>
-
-        <p className="text-center text-[11px] text-white/18 mt-2 tracking-wide">
-          RUBRA can make mistakes · Verify critical information
-        </p>
       </div>
+
+      {/* Disclaimer */}
+      <p className="text-center text-[11px] text-white/18 mt-2">
+        RUBRA can make mistakes · Verify critical information
+      </p>
     </div>
   )
 }
