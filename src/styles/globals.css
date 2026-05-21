@@ -155,3 +155,14 @@
   background: none; color: inherit; padding: 0;
   font-size: 0.835rem; font-family: 'JetBrains Mono', monospace;
 }
+@keyframes rubra-indeterminate {
+  0%   { transform: translateX(-100%) scaleX(0.5); }
+  50%  { transform: translateX(0%)    scaleX(0.8); }
+  100% { transform: translateX(100%) scaleX(0.5); }
+}
+ 
+/* Apply via Tailwind arbitrary: or add direct class */
+.progress-indeterminate {
+  animation: rubra-indeterminate 1.4s ease infinite;
+  width: 40% !important;
+}
