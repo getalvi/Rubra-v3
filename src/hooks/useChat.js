@@ -1,11 +1,14 @@
 /**
- * RUBRA v3 — src/hooks/useChat.js (FULLY FIXED)
+ * RUBRA v3 — src/hooks/useChat.js
  *
- * Fixes:
- *  BUG 2: onEvent now handles type field (token / meta / error)
- *         AND backward-compat old format {token: "...", done: true}
- *  BUG 3: full = evt.content (replace), NOT full += evt.content (append)
- *         Backend sends COMPLETE response in one chunk, not word-by-word.
+ * Fixed:
+ *  - cancelRef.current = sendMessage() — await সরানো হয়েছে
+ *    (sendMessage এখন abort fn synchronously return করে)
+ *  - নতুন session এ race condition fix:
+ *    sid একটা local variable এ রাখা হয় এবং সব closure সেটাই use করে
+ *  - onDone এ isStreaming false হওয়ার আগে content check
+ *  - openSession এ localStorage থেকে fresh load
+ *  - sendFile এও await সরানো হয়েছে
  */
 
 import { useState, useCallback, useRef } from 'react'
@@ -20,11 +23,11 @@ export default function useChat() {
   const [sessions,    setSessions]    = useState(load)
   const [activeSid,   setActiveSid]   = useState(null)
   const [messages,    setMessages]    = useState([])
-  const [isStreaming, setIsStreaming] = useState(false)
+  const [isStreaming, setIsStreaming]  = useState(false)
   const [agentMeta,   setAgentMeta]   = useState(null)
   const cancelRef = useRef(null)
 
-  // ── Persistence ─────────────────────────────────────────────────────────────
+  // ── Persistence ──────────────────────────────────────────────────────────────
   const persist = useCallback((sid, msgs) => {
     setSessions(prev => {
       const title = msgs.find(m => m.role === 'user')?.content?.slice(0, 60) || 'New chat'
@@ -43,23 +46,36 @@ export default function useChat() {
       save(next)
       return next
     })
-    return sid
+    return sid   // ← caller কে synchronously return করা হয়
   }, [])
 
-  // ── Session Controls ─────────────────────────────────────────────────────────
+  // ── Session Controls ──────────────────────────────────────────────────────────
   const startNew = useCallback(() => {
     cancelRef.current?.()
-    setActiveSid(null); setMessages([]); setAgentMeta(null); setIsStreaming(false)
+    setActiveSid(null)
+    setMessages([])
+    setAgentMeta(null)
+    setIsStreaming(false)
   }, [])
 
   const openSession = useCallback(sid => {
-    const s = load().find(x => x.id === sid)
+    // localStorage থেকে fresh load — state stale হতে পারে
+    const all = load()
+    const s   = all.find(x => x.id === sid)
     if (!s) return
-    setActiveSid(sid); setMessages(s.messages || [])
+    cancelRef.current?.()
+    setActiveSid(sid)
+    setMessages(s.messages || [])
+    setIsStreaming(false)
+    setAgentMeta(null)
   }, [])
 
   const removeSession = useCallback(sid => {
-    setSessions(prev => { const next = prev.filter(s => s.id !== sid); save(next); return next })
+    setSessions(prev => {
+      const next = prev.filter(s => s.id !== sid)
+      save(next)
+      return next
+    })
     if (activeSid === sid) startNew()
   }, [activeSid, startNew])
 
@@ -69,42 +85,47 @@ export default function useChat() {
     setMessages(prev => prev.map(m => m.streaming ? { ...m, streaming: false } : m))
   }, [])
 
-  // ── Send Message ─────────────────────────────────────────────────────────────
-  const send = useCallback(async (text, opts = {}) => {
+  // ── Send Message ──────────────────────────────────────────────────────────────
+  const send = useCallback((text, opts = {}) => {
     if (!text.trim() || isStreaming) return
 
+    // FIX: sid কে local variable এ pin করো
+    // setActiveSid(sid) async, কিন্তু নিচের সব closure এ local `sid` use করা হয়
     let sid = activeSid
-    if (!sid) { sid = makeSession(text); setActiveSid(sid) }
+    if (!sid) {
+      sid = makeSession(text)
+      setActiveSid(sid)
+    }
 
-    const userMsg = { id: uuid(), role: 'user',      content: text, ts: Date.now() }
-    const botMsg  = { id: uuid(), role: 'assistant', content: '', streaming: true,
-                      agentMeta: null, toolResults: [], ts: Date.now() }
-    const botId   = botMsg.id
+    const userMsg = {
+      id: uuid(), role: 'user', content: text, ts: Date.now()
+    }
+    const botMsg = {
+      id: uuid(), role: 'assistant', content: '', streaming: true,
+      agentMeta: null, toolResults: [], ts: Date.now()
+    }
+    const botId = botMsg.id
 
     setMessages(prev => [...prev, userMsg, botMsg])
     setIsStreaming(true)
     setAgentMeta(null)
 
-    // FIXED BUG 3: Use `let full` and REPLACE (=), not append (+=)
     let full = ''
 
-    cancelRef.current = await sendMessage(
+    // FIX: await সরানো হয়েছে — sendMessage() synchronously abort fn return করে
+    cancelRef.current = sendMessage(
       { message: text, sessionId: sid, taskType: opts.taskType, mode: opts.mode },
       {
-        // FIXED BUG 2: Handle new typed format AND old backward-compat format
         onEvent: evt => {
           if (evt.type === 'meta') {
-            // Meta event: intent/mode info — store for UI display
             setAgentMeta(evt)
             setMessages(prev => prev.map(m =>
               m.id === botId ? { ...m, agentMeta: evt } : m
             ))
 
           } else if (evt.type === 'token') {
-            // FIXED BUG 3: Replace content, don't append!
-            // Backend sends full response in one chunk.
             if (evt.content) {
-              full = evt.content   // ← = not +=
+              full = evt.content   // replace, not append
               setMessages(prev => prev.map(m =>
                 m.id === botId ? { ...m, content: full } : m
               ))
@@ -125,7 +146,7 @@ export default function useChat() {
             ))
 
           } else if (evt.token !== undefined) {
-            // Backward-compat: old backend format {token: "...", done: true}
+            // backward-compat: old format {token: "...", done: true}
             full = evt.token
             setMessages(prev => prev.map(m =>
               m.id === botId ? { ...m, content: full } : m
@@ -149,7 +170,12 @@ export default function useChat() {
           setMessages(prev => {
             const next = prev.map(m =>
               m.id === botId
-                ? { ...m, content: `Connection error: ${err.message}`, error: true, streaming: false }
+                ? {
+                    ...m,
+                    content: m.content || `Connection error: ${err.message}`,
+                    error: true,
+                    streaming: false
+                  }
                 : m
             )
             persist(sid, next)
@@ -160,12 +186,15 @@ export default function useChat() {
     )
   }, [activeSid, isStreaming, makeSession, persist])
 
-  // ── Send File ────────────────────────────────────────────────────────────────
-  const sendFile = useCallback(async (file, question = '', opts = {}) => {
+  // ── Send File ──────────────────────────────────────────────────────────────
+  const sendFile = useCallback((file, question = '', opts = {}) => {
     if (isStreaming) return
 
     let sid = activeSid
-    if (!sid) { sid = makeSession(question || file.name); setActiveSid(sid) }
+    if (!sid) {
+      sid = makeSession(question || file.name)
+      setActiveSid(sid)
+    }
 
     const userMsg = {
       id: uuid(), role: 'user',
@@ -184,12 +213,13 @@ export default function useChat() {
 
     let full = ''
 
-    cancelRef.current = await uploadFile(
+    // FIX: await সরানো হয়েছে
+    cancelRef.current = uploadFile(
       { file, sessionId: sid, question, mode: opts.mode },
       {
         onEvent: evt => {
           if (evt.type === 'token' && evt.content) {
-            full = evt.content   // Replace, not append
+            full = evt.content
             setMessages(prev => prev.map(m =>
               m.id === botId ? { ...m, content: full } : m
             ))
