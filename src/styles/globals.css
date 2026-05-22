@@ -3,166 +3,247 @@
 @tailwind utilities;
 
 @layer base {
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
   html {
-    font-size: 15px;
+    font-size: 14px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
   }
 
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #060606;
-    color: rgba(255,255,255,0.92);
-    min-height: 100dvh;
+    font-family: 'Google Sans', 'Segoe UI', Roboto, sans-serif;
+    background: #131314;
+    color: #e3e3e3;
+    min-height: 100vh;
     overflow: hidden;
   }
 
-  /* ── Root layout fill ── */
-  #root { height: 100dvh; display: flex; }
+  #root {
+    height: 100vh;
+    display: flex;
+  }
 
-  /* ── Scrollbar ── */
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 999px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+  /* Clean scrollbar like Gemini */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.15);
+  }
 
-  /* ── Focus ring ── */
-  :focus-visible { outline: 1.5px solid rgba(192,57,43,0.7); outline-offset: 2px; border-radius: 6px; }
+  ::selection {
+    background: rgba(138,180,248,0.3);
+    color: white;
+  }
 
-  /* ── Selection ── */
-  ::selection { background: rgba(192,57,43,0.28); color: rgba(255,255,255,0.95); }
-}
-
-/* ══════════════════════════════════════
-   SCENE BACKGROUND
-   Deep vignette + reddish bloom
-══════════════════════════════════════ */
-.scene-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    /* Deep radial vignette from corners */
-    radial-gradient(ellipse 160% 80% at 50% 120%, #060606 35%, transparent 70%),
-    /* Deep reddish bloom — top-left */
-    radial-gradient(ellipse 70% 55% at -8% -5%,  rgba(160,38,28,0.55) 0%, transparent 65%),
-    /* Reddish bloom — bottom-right */
-    radial-gradient(ellipse 60% 50% at 108% 105%, rgba(140,30,22,0.45) 0%, transparent 60%),
-    /* Warm dark base */
-    radial-gradient(ellipse 100% 100% at 50% 50%,  #120808 0%, #060606 70%);
-  overflow: hidden;
+  /* Focus styles */
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid #8ab4f8;
+    outline-offset: 2px;
+  }
 }
 
-/* Noise texture overlay for depth */
-.scene-bg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-  opacity: 0.6;
-  pointer-events: none;
+/* ═══════════════════════════════════════════════
+   ANIMATIONS - Minimal like Gemini
+═══════════════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* ══════════════════════════════════════
-   GLASS MIXINS  (utility classes)
-══════════════════════════════════════ */
-.glass-panel {
-  background: rgba(255,255,255,0.035);
-  backdrop-filter: saturate(180%) blur(28px);
-  -webkit-backdrop-filter: saturate(180%) blur(28px);
-  border: 0.5px solid rgba(255,255,255,0.07);
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.glass-card {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: saturate(200%) blur(20px);
-  -webkit-backdrop-filter: saturate(200%) blur(20px);
-  border: 0.5px solid rgba(255,255,255,0.09);
+.animate-fade-in {
+  animation: fadeIn 0.3s ease;
 }
 
-.glass-input {
-  background: rgba(255,255,255,0.042);
-  backdrop-filter: saturate(180%) blur(48px);
-  -webkit-backdrop-filter: saturate(180%) blur(48px);
-  border: 0.5px solid rgba(255,255,255,0.09);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+.animate-slide-up {
+  animation: slideUp 0.4s ease;
 }
 
-.glass-input:focus-within {
-  border-color: rgba(192,57,43,0.40);
-  box-shadow: 0 0 0 3px rgba(192,57,43,0.08), 0 4px 32px rgba(0,0,0,0.5);
+/* ═══════════════════════════════════════════════
+   MARKDOWN STYLES - Clean like Gemini
+═══════════════════════════════════════════════ */
+.markdown {
+  color: #e3e3e3;
+  line-height: 1.7;
+  font-size: 14px;
 }
 
-/* ══════════════════════════════════════
-   MARKDOWN / PROSE inside messages
-══════════════════════════════════════ */
-.prose-rubra {
-  color: rgba(255,255,255,0.88);
-  font-size: 0.9375rem;
-  line-height: 1.75;
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  color: #e8eaed;
+  font-weight: 500;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
 }
-.prose-rubra p          { margin-bottom: 0.8em; }
-.prose-rubra p:last-child { margin-bottom: 0; }
-.prose-rubra h1 { font-size: 1.35rem; font-weight: 600; margin: 1.2em 0 0.45em; }
-.prose-rubra h2 { font-size: 1.15rem; font-weight: 600; margin: 1.1em 0 0.4em; }
-.prose-rubra h3 { font-size: 1rem;   font-weight: 600; margin: 1em 0 0.35em; }
-.prose-rubra ul,
-.prose-rubra ol  { padding-left: 1.4em; margin-bottom: 0.8em; }
-.prose-rubra li  { margin-bottom: 0.25em; }
-.prose-rubra strong { font-weight: 600; color: rgba(255,255,255,0.96); }
-.prose-rubra em     { color: rgba(255,255,255,0.6); font-style: italic; }
-.prose-rubra a      { color: #e05a50; text-decoration: none; }
-.prose-rubra a:hover { color: #ea706b; text-decoration: underline; }
-.prose-rubra blockquote {
-  border-left: 2px solid rgba(192,57,43,0.5);
-  padding-left: 1em;
-  color: rgba(255,255,255,0.5);
-  margin: 0.8em 0;
+
+.markdown h1 { font-size: 1.5em; }
+.markdown h2 { font-size: 1.3em; }
+.markdown h3 { font-size: 1.1em; }
+
+.markdown p {
+  margin-bottom: 1em;
 }
-.prose-rubra hr {
-  border: none;
-  border-top: 0.5px solid rgba(255,255,255,0.07);
-  margin: 1.4em 0;
-}
-.prose-rubra table {
-  width: 100%; border-collapse: collapse;
-  font-size: 0.875rem; margin: 1em 0;
-}
-.prose-rubra th,
-.prose-rubra td { padding: 0.45em 0.75em; border: 0.5px solid rgba(255,255,255,0.07); text-align: left; }
-.prose-rubra th { background: rgba(255,255,255,0.05); font-weight: 600; }
-.prose-rubra code:not(pre code) {
-  background: rgba(192,57,43,0.14);
-  color: #f5b8b3;
-  padding: 0.12em 0.38em;
+
+.markdown code {
+  background: rgba(255,255,255,0.08);
+  padding: 2px 6px;
   border-radius: 4px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.82em;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.92em;
+  color: #8ab4f8;
 }
-.prose-rubra pre {
-  background: rgba(0,0,0,0.55);
-  border: 0.5px solid rgba(255,255,255,0.07);
-  border-radius: 12px;
-  padding: 1rem;
+
+.markdown pre {
+  background: #1e1f20;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 16px;
   overflow-x: auto;
-  margin: 0.9em 0;
+  margin: 1em 0;
 }
-.prose-rubra pre code {
-  background: none; color: inherit; padding: 0;
-  font-size: 0.835rem; font-family: 'JetBrains Mono', monospace;
+
+.markdown pre code {
+  background: none;
+  padding: 0;
+  color: #e3e3e3;
+  font-size: 13px;
 }
-@keyframes rubra-indeterminate {
-  0%   { transform: translateX(-100%) scaleX(0.5); }
-  50%  { transform: translateX(0%)    scaleX(0.8); }
-  100% { transform: translateX(100%) scaleX(0.5); }
+
+.markdown ul,
+.markdown ol {
+  margin-left: 1.5em;
+  margin-bottom: 1em;
 }
- 
-/* Apply via Tailwind arbitrary: or add direct class */
-.progress-indeterminate {
-  animation: rubra-indeterminate 1.4s ease infinite;
-  width: 40% !important;
+
+.markdown li {
+  margin-bottom: 0.3em;
+}
+
+.markdown a {
+  color: #8ab4f8;
+  text-decoration: none;
+}
+
+.markdown a:hover {
+  text-decoration: underline;
+}
+
+.markdown blockquote {
+  border-left: 3px solid rgba(255,255,255,0.2);
+  padding-left: 1em;
+  margin: 1em 0;
+  color: rgba(255,255,255,0.7);
+}
+
+.markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown th {
+  background: rgba(255,255,255,0.05);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════
+   UTILITY CLASSES
+═══════════════════════════════════════════════ */
+.btn-primary {
+  background: #8ab4f8;
+  color: #131314;
+  padding: 10px 20px;
+  border-radius: 24px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: #aac7fa;
+}
+
+.btn-secondary {
+  background: rgba(255,255,255,0.08);
+  color: #e3e3e3;
+  padding: 10px 20px;
+  border-radius: 24px;
+  border: none;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+.btn-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: #9aa0a6;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: rgba(255,255,255,0.08);
+  color: #e3e3e3;
+}
+
+.input-field {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 24px;
+  padding: 12px 20px;
+  color: #e3e3e3;
+  font-size: 14px;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.input-field:focus {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+}
+
+.input-field::placeholder {
+  color: #9aa0a6;
 }
