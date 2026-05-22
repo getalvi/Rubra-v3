@@ -1,194 +1,249 @@
 /**
- * ChatBar — glass input bar with live progress status
- * Fixed: suggestion clicks, progress bar, status text
+ * ChatArea — Main chat interface (Gemini-style)
  */
-import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { ArrowUp, Square, Paperclip, X } from 'lucide-react'
-import clsx from 'clsx'
+import React, { useState, useRef, useEffect } from 'react'
+import { Menu, Send, Paperclip, Square, Sparkles } from 'lucide-react'
+import Message from './Message'
 
-export default function ChatBar({ onSend, onFile, onStop, isStreaming, statusText = '', progress = 0 }) {
-  const [text,       setText]       = useState('')
-  const [dragging,   setDragging]   = useState(false)
-  const [attachment, setAttachment] = useState(null)   // { file, preview }
-  const textareaRef  = useRef(null)
-  const fileInputRef = useRef(null)
+const SUGGESTIONS = [
+  "Explain quantum computing in simple terms",
+  "Write a Python function to sort a list",
+  "What's the weather in Dhaka today?",
+  "Help me with my physics homework",
+]
 
-  // Auto-resize textarea
-  useEffect(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 200) + 'px'
-  }, [text])
-
-  const submit = useCallback(() => {
-    if (isStreaming) return
-    const trimmed = text.trim()
-
-    if (attachment) {
-      onFile?.(attachment.file, trimmed)
-      setAttachment(null)
-      setText('')
-      return
-    }
-
-    if (!trimmed) return
-    onSend?.(trimmed)
-    setText('')
-    // reset height
-    if (textareaRef.current) textareaRef.current.style.height = 'auto'
-  }, [text, attachment, isStreaming, onSend, onFile])
-
-  const onKey = useCallback(e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      submit()
-    }
-  }, [submit])
-
-  // Drag-and-drop
-  const onDragOver  = e => { e.preventDefault(); setDragging(true) }
-  const onDragLeave = () => setDragging(false)
-  const onDrop      = e => {
-    e.preventDefault(); setDragging(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) handleFile(file)
-  }
-
-  const handleFile = file => {
-    const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
-    setAttachment({ file, preview })
-  }
-
-  const canSend = !isStreaming && (text.trim().length > 0 || attachment)
-
+function WelcomeScreen({ onPrompt }) {
   return (
-    <div className="shrink-0 px-4 pb-4 pt-2">
-      {/* ── Progress bar + status ─────────────────────────────────────── */}
-      {isStreaming && (
-        <div className="mb-2 space-y-1 animate-fade-up">
-          {/* Status text */}
-          <div className="flex items-center gap-2 px-1">
-            <span className="text-[12px] text-white/45 font-medium tracking-wide">
-              {statusText || '⚙️ কাজ করছি…'}
-            </span>
-            <span className="text-[11px] text-white/20">
-              {progress > 0 ? `${progress}%` : ''}
-            </span>
-          </div>
-          {/* Progress bar */}
-          <div className="h-[2px] w-full rounded-full bg-white/[0.06] overflow-hidden">
-            <div
-              className="h-full rounded-full bg-brand transition-all duration-500 ease-out"
-              style={{ width: progress > 0 ? `${progress}%` : '100%',
-                       animation: progress === 0 ? 'rubra-indeterminate 1.4s ease infinite' : 'none' }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ── Main input card ───────────────────────────────────────────── */}
-      <div
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        className={clsx(
-          'relative rounded-[22px] border backdrop-blur-glass transition-all duration-200',
-          dragging
-            ? 'border-brand/60 bg-brand/[0.07] shadow-brand'
-            : 'border-white/[0.09] bg-white/[0.045] shadow-glass',
-        )}
-      >
-        {/* Attachment preview */}
-        {attachment && (
-          <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-            {attachment.preview
-              ? <img src={attachment.preview} alt="" className="h-12 w-12 rounded-lg object-cover border border-white/10" />
-              : <div className="h-10 flex items-center gap-2 px-3 rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/50 text-[12px]">
-                  📎 {attachment.file.name}
-                </div>
-            }
-            <button
-              onClick={() => setAttachment(null)}
-              className="w-5 h-5 flex items-center justify-center rounded-full bg-white/10 text-white/40 hover:text-white/70 hover:bg-white/15 transition-all"
-            >
-              <X size={11} />
-            </button>
-          </div>
-        )}
-
-        {/* Drag overlay */}
-        {dragging && (
-          <div className="absolute inset-0 rounded-[22px] flex items-center justify-center bg-brand/[0.08] border-2 border-dashed border-brand/40 z-10">
-            <p className="text-brand/80 text-[13px] font-medium">ফাইল এখানে ছেড়ে দাও</p>
-          </div>
-        )}
-
-        <div className="flex items-end gap-2 px-3 py-2.5">
-          {/* Attach button */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isStreaming}
-            className="w-8 h-8 flex items-center justify-center rounded-xl text-white/25 hover:text-white/55 hover:bg-white/[0.06] transition-all shrink-0 mb-0.5 disabled:opacity-30"
-            title="ফাইল যোগ করো"
-          >
-            <Paperclip size={16} />
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
-            accept="image/*,.pdf,.txt,.md,.csv,.json,.py,.js,.ts"
-          />
-
-          {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={onKey}
-            placeholder={isStreaming ? (statusText || 'উত্তর আসছে…') : 'Message RUBRA…'}
-            disabled={isStreaming}
-            className={clsx(
-              'flex-1 resize-none bg-transparent outline-none text-[14.5px] leading-relaxed',
-              'text-white/85 placeholder:text-white/22 py-1 min-h-[24px] max-h-[200px]',
-              'disabled:cursor-not-allowed'
-            )}
-          />
-
-          {/* Send / Stop button */}
-          {isStreaming ? (
-            <button
-              onClick={onStop}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-brand/80 hover:bg-brand text-white transition-all shrink-0 mb-0.5"
-              title="থামাও"
-            >
-              <Square size={13} fill="currentColor" />
-            </button>
-          ) : (
-            <button
-              onClick={submit}
-              disabled={!canSend}
-              className={clsx(
-                'w-9 h-9 flex items-center justify-center rounded-full transition-all shrink-0 mb-0.5',
-                canSend
-                  ? 'bg-brand hover:bg-brand/85 text-white shadow-brand active:scale-95'
-                  : 'bg-white/[0.05] text-white/15 cursor-not-allowed'
-              )}
-              title="পাঠাও (Enter)"
-            >
-              <ArrowUp size={16} />
-            </button>
-          )}
+    <div className="flex-1 flex flex-col items-center justify-center px-6 animate-slide-up">
+      {/* Logo */}
+      <div className="mb-8">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-xl">
+          <Sparkles size={32} className="text-white" />
         </div>
       </div>
 
-      {/* Disclaimer */}
-      <p className="text-center text-[11px] text-white/18 mt-2">
-        RUBRA can make mistakes · Verify critical information
+      {/* Title */}
+      <h1 className="text-4xl font-normal text-white/90 mb-4">
+        What should we focus on?
+      </h1>
+
+      {/* Suggestions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl w-full mt-8">
+        {SUGGESTIONS.map((suggestion, i) => (
+          <button
+            key={i}
+            onClick={() => onPrompt(suggestion)}
+            className="
+              p-4 rounded-xl text-left
+              bg-[#1e1f20] hover:bg-[#28292a]
+              border border-white/10
+              text-white/80 text-sm
+              transition-all duration-200
+              hover:-translate-y-0.5
+            "
+          >
+            {suggestion}
+          </button>
+        ))}
+      </div>
+
+      {/* Footer note */}
+      <p className="mt-12 text-xs text-white/40">
+        Rubra is AI and can make mistakes.
       </p>
+    </div>
+  )
+}
+
+export default function ChatArea({ 
+  messages, 
+  isStreaming, 
+  onSend, 
+  onFile,
+  onStop,
+  onMenuToggle,
+  sidebarOpen 
+}) {
+  const [input, setInput] = useState('')
+  const [isDragging, setIsDragging] = useState(false)
+  const messagesEndRef = useRef(null)
+  const fileInputRef = useRef(null)
+  const textareaRef = useRef(null)
+
+  // Auto scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px'
+    }
+  }, [input])
+
+  const handleSend = () => {
+    if (!input.trim() || isStreaming) return
+    onSend(input.trim())
+    setInput('')
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (file) onFile(file)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) onFile(file)
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const isEmpty = messages.length === 0
+
+  return (
+    <div 
+      className="flex-1 flex flex-col h-screen relative"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-500/50 rounded-lg z-50 flex items-center justify-center">
+          <p className="text-blue-400 text-lg font-medium">Drop file here</p>
+        </div>
+      )}
+
+      {/* Top bar - only show when not sidebar open on mobile */}
+      {!sidebarOpen && (
+        <div className="h-16 flex items-center px-4 border-b border-white/10 lg:hidden">
+          <button
+            onClick={onMenuToggle}
+            className="btn-icon"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+        </div>
+      )}
+
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto">
+        {isEmpty ? (
+          <WelcomeScreen onPrompt={onSend} />
+        ) : (
+          <div className="max-w-3xl mx-auto px-4 py-8">
+            {messages.map((msg, i) => (
+              <Message key={i} message={msg} />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      {/* Input area */}
+      <div className="shrink-0 border-t border-white/10 bg-[#131314]">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="relative">
+            {/* Input box */}
+            <div className="
+              bg-[#1e1f20] border border-white/10
+              rounded-3xl overflow-hidden
+              focus-within:border-white/20
+              transition-colors
+            ">
+              <div className="flex items-end gap-2 p-3">
+                {/* File attach button */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isStreaming}
+                  className="btn-icon shrink-0 w-10 h-10"
+                  aria-label="Attach file"
+                >
+                  <Paperclip size={20} />
+                </button>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+
+                {/* Text input */}
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask Rubra"
+                  disabled={isStreaming}
+                  rows={1}
+                  className="
+                    flex-1 bg-transparent resize-none
+                    text-white text-sm
+                    placeholder-white/40
+                    outline-none
+                    max-h-[200px]
+                    py-2
+                  "
+                />
+
+                {/* Send/Stop button */}
+                {isStreaming ? (
+                  <button
+                    onClick={onStop}
+                    className="shrink-0 w-10 h-10 rounded-full bg-white/10 hover:bg-white/15 flex items-center justify-center transition-colors"
+                    aria-label="Stop"
+                  >
+                    <Square size={18} className="text-white" fill="currentColor" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSend}
+                    disabled={!input.trim()}
+                    className={`
+                      shrink-0 w-10 h-10 rounded-full flex items-center justify-center
+                      transition-all
+                      ${input.trim() 
+                        ? 'bg-white text-[#131314] hover:bg-white/90' 
+                        : 'bg-white/10 text-white/40 cursor-not-allowed'
+                      }
+                    `}
+                    aria-label="Send"
+                  >
+                    <Send size={18} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Helper text */}
+            <p className="text-xs text-white/30 text-center mt-2">
+              Rubra can make mistakes. Check important info.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
