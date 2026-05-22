@@ -1,48 +1,51 @@
 /**
- * App — root layout
- * Fixed: statusText + progress passed down to ChatWindow → ChatBar
+ * RUBRA — Gemini-Style UI
+ * Clean, simple, user-friendly interface
  */
 import React, { useState } from 'react'
-import Sidebar    from '../components/Sidebar/index.jsx'
-import ChatWindow from '../components/ChatWindow/index.jsx'
-import useChat    from '../hooks/useChat.js'
+import Sidebar from './components/Sidebar'
+import ChatArea from './components/ChatArea'
+import useChat from './hooks/useChat'
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  
   const {
-    sessions, activeSid, messages, isStreaming, agentMeta,
-    statusText, progress,
-    send, sendFile, stop, startNew, openSession, removeSession,
+    messages,
+    isStreaming,
+    send,
+    sendFile,
+    stop,
+    sessions,
+    activeSid,
+    startNew,
+    openSession,
+    removeSession
   } = useChat()
 
   return (
-    <>
-      <div className="scene-bg" aria-hidden="true" />
-      <div className="relative z-10 flex w-full h-full overflow-hidden">
-        <Sidebar
-          sessions={sessions}
-          activeSid={activeSid}
-          onNew={startNew}
-          onOpen={openSession}
-          onDelete={removeSession}
-          collapsed={!sidebarOpen}
-          onToggle={() => setSidebarOpen(v => !v)}
-        />
-        <main className="flex-1 min-w-0 overflow-hidden">
-          <ChatWindow
-            messages={messages}
-            isStreaming={isStreaming}
-            agentMeta={agentMeta}
-            statusText={statusText}
-            progress={progress}
-            onSend={send}
-            onFile={sendFile}
-            onStop={stop}
-            onNewChat={startNew}
-            onMenuToggle={() => setSidebarOpen(v => !v)}
-          />
-        </main>
-      </div>
-    </>
+    <div className="flex w-full h-screen bg-[#131314]">
+      {/* Sidebar */}
+      <Sidebar
+        open={sidebarOpen}
+        sessions={sessions}
+        activeSid={activeSid}
+        onNew={startNew}
+        onOpen={openSession}
+        onDelete={removeSession}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+      />
+
+      {/* Main Chat Area */}
+      <ChatArea
+        messages={messages}
+        isStreaming={isStreaming}
+        onSend={send}
+        onFile={sendFile}
+        onStop={stop}
+        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+        sidebarOpen={sidebarOpen}
+      />
+    </div>
   )
 }
