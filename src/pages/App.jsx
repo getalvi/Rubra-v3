@@ -1,31 +1,19 @@
-/**
- * RUBRA — Gemini-Style UI
- * Clean, simple, user-friendly interface
- */
 import React, { useState } from 'react'
-import Sidebar from './components/Sidebar'
-import ChatArea from './components/ChatArea'
-import useChat from './hooks/useChat'
+import Sidebar from '../components/Sidebar.jsx'
+import ChatWindow from '../components/ChatWindow/index.jsx'
+import useChat from '../hooks/useChat'
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  
+
   const {
-    messages,
-    isStreaming,
-    send,
-    sendFile,
-    stop,
-    sessions,
-    activeSid,
-    startNew,
-    openSession,
-    removeSession
+    messages, isStreaming, send, sendFile, stop,
+    sessions, activeSid, startNew, openSession, removeSession,
+    statusText, progress, agentMeta
   } = useChat()
 
   return (
     <div className="flex w-full h-screen bg-[#131314]">
-      {/* Sidebar */}
       <Sidebar
         open={sidebarOpen}
         sessions={sessions}
@@ -36,15 +24,17 @@ export default function App() {
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
 
-      {/* Main Chat Area */}
-      <ChatArea
+      <ChatWindow
         messages={messages}
         isStreaming={isStreaming}
+        agentMeta={agentMeta}
+        statusText={statusText}
+        progress={progress}
         onSend={send}
         onFile={sendFile}
         onStop={stop}
+        onNewChat={startNew}
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-        sidebarOpen={sidebarOpen}
       />
     </div>
   )
