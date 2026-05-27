@@ -64,7 +64,7 @@ export default function App() {
 
   return (
     <ChatContext.Provider value={{ messages, sendMessage, isStreaming, stopStreaming, isSidebarOpen, toggleSidebar }}>
-      <div className="flex h-screen w-full bg-gemini-bg text-gemini-text font-sans overflow-hidden relative">
+      <div className="flex h-screen w-full bg-gemini-black text-gemini-text font-sans overflow-hidden relative">
         <button 
           onClick={toggleSidebar}
           className="absolute top-4 left-4 z-50 text-gray-400 hover:text-gemini-text p-2 rounded-lg hover:bg-gemini-surface transition-colors"
@@ -76,11 +76,11 @@ export default function App() {
 
         <Sidebar />
         
-        <main className="flex-1 flex flex-col relative h-full items-center w-full pt-12">
-          <div className="w-full max-w-4xl flex-1 overflow-y-auto pb-32">
+        <main className="flex-1 flex flex-col relative h-full items-center w-full pt-12 overflow-hidden">
+          <div className="w-full max-w-4xl flex-1 overflow-y-auto pb-32 no-scrollbar">
             <MessageThread />
           </div>
-          <div className="w-full absolute bottom-0 flex justify-center pb-6 pt-10 bg-gradient-to-t from-gemini-bg via-gemini-bg to-transparent">
+          <div className="w-full absolute bottom-0 flex justify-center pb-6 pt-10 bg-gradient-to-t from-gemini-black via-gemini-black to-transparent z-10">
             <ChatBar />
           </div>
         </main>
