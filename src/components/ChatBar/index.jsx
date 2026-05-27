@@ -20,7 +20,7 @@ export default function ChatBar() {
 
   return (
     <div className="w-full max-w-3xl px-4 z-10">
-      <div className="flex items-center bg-gemini-surface rounded-full px-4 py-3 shadow-lg border border-[#282a2c] focus-within:bg-[#2a2b2f] transition-colors">
+      <div className="flex items-center bg-gemini-surface rounded-full px-4 py-3 shadow-lg border border-[#282a2c] focus-within:border-[#4285f4] transition-colors">
         <button className="text-gray-400 hover:text-gemini-text p-2 transition rounded-full hover:bg-[#333538]">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -34,7 +34,6 @@ export default function ChatBar() {
           onKeyDown={handleKeyDown}
           placeholder="Ask Rubra anything..." 
           className="flex-1 bg-transparent border-none focus:outline-none text-gemini-text px-4 text-md"
-          disabled={isStreaming}
         />
         
         {isStreaming ? (
@@ -44,7 +43,11 @@ export default function ChatBar() {
             </svg>
           </button>
         ) : (
-          <button onClick={handleSend} className={`bg-transparent p-2 rounded-full transition ${input.trim() ? 'text-gemini-accent hover:bg-[#2a3950]' : 'text-gray-500 cursor-not-allowed'}`}>
+          <button 
+            onClick={handleSend} 
+            className={`p-2 rounded-full transition ${input.trim() ? 'text-gemini-accent hover:bg-[#2a3950]' : 'text-gray-500 cursor-not-allowed'}`}
+            disabled={!input.trim()}
+          >
              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
              </svg>
