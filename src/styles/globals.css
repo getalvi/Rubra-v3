@@ -1,3 +1,4 @@
+/* ═══════════════════════════════════════════════
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,7 +25,7 @@
     display: flex;
   }
 
-  /* Clean scrollbar like Gemini */
+
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -45,7 +46,7 @@
     color: white;
   }
 
-  /* Focus styles */
+
   button:focus-visible,
   input:focus-visible,
   textarea:focus-visible {
@@ -54,9 +55,9 @@
   }
 }
 
-/* ═══════════════════════════════════════════════
+
    ANIMATIONS - Minimal like Gemini
-═══════════════════════════════════════════════ */
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -81,9 +82,8 @@
   animation: slideUp 0.4s ease;
 }
 
-/* ═══════════════════════════════════════════════
-   MARKDOWN STYLES - Clean like Gemini
-═══════════════════════════════════════════════ */
+
+
 .markdown {
   color: #e3e3e3;
   line-height: 1.7;
@@ -176,9 +176,6 @@
   font-weight: 500;
 }
 
-/* ═══════════════════════════════════════════════
-   UTILITY CLASSES
-═══════════════════════════════════════════════ */
 .btn-primary {
   background: #8ab4f8;
   color: #131314;
@@ -254,9 +251,41 @@ body {
   padding: 0;
 }
 
-/* Glass classes override koro */
+
 .glass-panel {
   background: #1e1f20;
   border: none;
   backdrop-filter: none;
+}
+═══════════════════════════════════════════════ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #131314;
+  color: #e3e3e3;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.glass-panel {
+  background-color: #1e1f20;
+  border: 1px solid #282a2c;
+  backdrop-filter: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
 }
