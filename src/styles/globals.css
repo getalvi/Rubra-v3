@@ -247,3 +247,16 @@
 .input-field::placeholder {
   color: #9aa0a6;
 }
+body {
+  background-color: #131314; 
+  color: #e3e3e3;
+  margin: 0;
+  padding: 0;
+}
+
+/* Glass classes override koro */
+.glass-panel {
+  background: #1e1f20;
+  border: none;
+  backdrop-filter: none;
+}
