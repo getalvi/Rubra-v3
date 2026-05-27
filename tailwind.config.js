@@ -45,3 +45,17 @@ export default {
   },
   plugins: [],
 }
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        gemini: {
+          bg: '#131314',      // Main background
+          surface: '#1e1f20', // Sidebar & Input box
+          text: '#e3e3e3',    // Primary text
+          accent: '#a8c7fa',  // Accent for buttons
+        }
+      }
+    }
+  }
+}
