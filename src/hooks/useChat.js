@@ -1,8 +1,11 @@
-import { useState, useRef } from 'react';
+import React, { createContext, useContext, useState, useRef } from 'react';
 
-export default function useChat() {
+const ChatContext = createContext();
+
+export function ChatProvider({ children }) {
   const [messages, setMessages] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const abortControllerRef = useRef(null);
 
   const sendMessage = async (text) => {
@@ -18,7 +21,6 @@ export default function useChat() {
     abortControllerRef.current = new AbortController();
 
     try {
-      // Hugging Face Space API Endpoint fallback
       const backendUrl = import.meta.env.VITE_API_URL || 'https://getalvi-rubra-v3.hf.space/api/chat';
 
       const response = await fetch(backendUrl, {
@@ -31,7 +33,6 @@ export default function useChat() {
       if (!response.ok) throw new Error('Backend connection failed');
 
       const data = await response.json();
-      // Backend structured response dynamic assignment
       const reply = data.response || data.reply || data.text || JSON.stringify(data);
 
       setMessages((prev) =>
@@ -41,7 +42,7 @@ export default function useChat() {
       if (error.name !== 'AbortError') {
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantMessageId ? { ...m, text: 'Error connecting to Rubra backend. Please check your Space API.' } : m
+            m.id === assistantMessageId ? { ...m, text: 'Error connecting to Rubra backend.' } : m
           )
         );
       }
@@ -57,5 +58,19 @@ export default function useChat() {
     }
   };
 
-  return { messages, sendMessage, isStreaming, stopStreaming };
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+
+  return (
+    <ChatContext.Provider value={{ messages, sendMessage, isStreaming, stopStreaming, isSidebarOpen, toggleSidebar }}>
+      {children}
+    </ChatContext.Provider>
+  );
+}
+
+export default function useChat() {
+  const context = useContext(ChatContext);
+  if (!context) {
+    return { messages: [], sendMessage: () => {}, isStreaming: false, stopStreaming: () => {}, isSidebarOpen: false, toggleSidebar: () => {} };
+  }
+  return context;
 }
