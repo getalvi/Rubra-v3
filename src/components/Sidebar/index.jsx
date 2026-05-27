@@ -1,97 +1,28 @@
-/**
- * Sidebar — with background streaming indicator
- * চলমান session এ একটা pulse dot দেখাবে
- */
-import React from 'react'
-import { Menu, Plus, MessageSquare, Settings, Trash2 } from 'lucide-react'
+import React from 'react';
+import useChat from '../../hooks/useChat';
 
-export default function Sidebar({
-  open, sessions, activeSid,
-  onNew, onOpen, onDelete, onToggle,
-  streamingSids = [],  // session ids that are currently streaming
-}) {
-  if (!open) {
-    return (
-      <div className="w-16 h-full bg-[#1e1f20] border-r border-white/[0.07] flex flex-col items-center py-4 shrink-0">
-        <button onClick={onToggle} className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-all mb-3">
-          <Menu size={18} />
-        </button>
-        <button onClick={onNew} className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-all">
-          <Plus size={18} />
-        </button>
-      </div>
-    )
-  }
+export default function Sidebar() {
+  const { isSidebarOpen, toggleSidebar } = useChat();
 
   return (
-    <div className="w-[255px] h-full bg-[#1e1f20] border-r border-white/[0.07] flex flex-col shrink-0">
-      {/* Header */}
-      <div className="h-[52px] flex items-center justify-between px-4 border-b border-white/[0.07]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">R</span>
-          </div>
-          <span className="text-white/80 font-semibold text-[13.5px]">Rubra</span>
+    <aside className={`fixed md:relative top-0 left-0 h-full w-64 bg-gemini-surface border-r border-[#282a2c] z-40 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col`}>
+      <div className="p-4 flex items-center justify-between border-b border-[#282a2c] mt-12 md:mt-0">
+        <div className="flex items-center space-x-2">
+          <img src="/favicon.svg" alt="Rubra" className="w-6 h-6" />
+          <span className="font-semibold text-lg text-gemini-text">Rubra v3</span>
         </div>
-        <button onClick={onToggle}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-white/30 hover:text-white/65 hover:bg-white/[0.06] transition-all">
-          <Menu size={17} />
+        <button onClick={toggleSidebar} className="md:hidden text-gray-400 hover:text-gemini-text">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       </div>
-
-      {/* New Chat */}
-      <div className="p-3">
-        <button onClick={onNew}
-          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.09] text-white/75 hover:text-white transition-all text-[13px] font-medium">
-          <Plus size={16} />
-          New chat
-        </button>
+      
+      <div className="flex-1 overflow-y-auto p-4">
+        {/* History or navigation list goes here */}
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Recent Chats</div>
+        <div className="text-sm text-gray-400 italic">No recent history</div>
       </div>
-
-      {/* Session list */}
-      <div className="flex-1 overflow-y-auto px-2 py-1">
-        {sessions.length === 0 ? (
-          <p className="text-center py-8 text-white/25 text-[12px]">No chats yet</p>
-        ) : (
-          sessions.map(s => {
-            const isActive    = activeSid === s.id
-            const isStreaming = streamingSids.includes(s.id)
-            return (
-              <div key={s.id}
-                className={`group flex items-center gap-2 px-3 py-2.5 mb-0.5 rounded-xl cursor-pointer transition-all relative
-                  ${isActive ? 'bg-white/[0.09] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white/80'}`}
-                onClick={() => onOpen(s.id)}
-              >
-                <MessageSquare size={15} className="shrink-0 opacity-60" />
-                <span className="flex-1 truncate text-[12.5px]">
-                  {s.title || `Chat ${s.id.slice(0, 6)}`}
-                </span>
-
-                {/* Background streaming pulse */}
-                {isStreaming && !isActive && (
-                  <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0 animate-pulse" />
-                )}
-
-                <button
-                  onClick={e => { e.stopPropagation(); onDelete(s.id) }}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded-lg transition-all shrink-0"
-                  title="Delete"
-                >
-                  <Trash2 size={13} className="text-white/40" />
-                </button>
-              </div>
-            )
-          })
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-white/[0.07] p-3">
-        <button className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-white/40 hover:bg-white/[0.06] hover:text-white/70 transition-all text-[12.5px]">
-          <Settings size={15} />
-          Settings
-        </button>
-      </div>
-    </div>
-  )
+    </aside>
+  );
 }
