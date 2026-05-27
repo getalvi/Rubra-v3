@@ -1,118 +1,59 @@
-/**
- * ChatBar — Clean Gemini-style input
- * No progress bar, no status text — those live in the message thread
- */
-import React, { useState, useRef, useEffect } from 'react'
-import { Send, Paperclip, Square } from 'lucide-react'
-import clsx from 'clsx'
+import React, { useState } from 'react';
+import useChat from '../../hooks/useChat'; 
 
-export default function ChatBar({ onSend, onFile, onStop, isStreaming }) {
-  const [input, setInput]       = useState('')
-  const [isDragging, setIsDrag] = useState(false)
-  const textareaRef = useRef(null)
-  const fileInputRef = useRef(null)
-
-  // Auto-resize
-  useEffect(() => {
-    if (!textareaRef.current) return
-    textareaRef.current.style.height = 'auto'
-    textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px'
-  }, [input])
+export default function ChatBar() {
+  const [input, setInput] = useState('');
+  const { sendMessage, isStreaming, stopStreaming } = useChat(); 
 
   const handleSend = () => {
-    if (!input.trim() || isStreaming) return
-    onSend(input.trim())
-    setInput('')
-  }
+    if (!input.trim() || isStreaming) return;
+    sendMessage(input);
+    setInput('');
+  };
 
-  const handleKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
-  }
-
-  const handleFile = (e) => {
-    const f = e.target.files?.[0]
-    if (f) onFile(f)
-    e.target.value = ''
-  }
-
-  const handleDrop = (e) => {
-    e.preventDefault(); setIsDrag(false)
-    const f = e.dataTransfer.files?.[0]
-    if (f) onFile(f)
-  }
-
-  const canSend = input.trim() && !isStreaming
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   return (
-    <div
-      className="shrink-0 px-4 pb-4 pt-2"
-      onDrop={handleDrop}
-      onDragOver={(e) => { e.preventDefault(); setIsDrag(true) }}
-      onDragLeave={() => setIsDrag(false)}
-    >
-      <div className="max-w-3xl mx-auto">
-        <div
-          className={clsx(
-            'flex items-end gap-2 px-3 py-3 rounded-3xl border transition-colors',
-            'bg-[#1e1f20]',
-            isDragging
-              ? 'border-blue-500/40 bg-blue-500/5'
-              : 'border-white/10 focus-within:border-white/15'
-          )}
-        >
-          {/* Attach */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isStreaming}
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all disabled:opacity-30"
-            aria-label="Attach file"
-          >
-            <Paperclip size={17} />
+    <div className="w-full max-w-3xl px-4 z-10">
+      <div className="flex items-center bg-gemini-surface rounded-full px-4 py-3 shadow-lg border border-[#282a2c] focus-within:bg-[#2a2b2f] transition-colors">
+        <button className="text-gray-400 hover:text-gemini-text p-2 transition rounded-full hover:bg-[#333538]">
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+        
+        <input 
+          type="text" 
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask Rubra anything..." 
+          className="flex-1 bg-transparent border-none focus:outline-none text-gemini-text px-4 text-md"
+          disabled={isStreaming}
+        />
+        
+        {isStreaming ? (
+          <button onClick={stopStreaming} className="bg-transparent text-gray-400 hover:text-gemini-text p-2 rounded-full transition hover:bg-[#333538]">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <rect x="6" y="6" width="12" height="12" rx="2" />
+            </svg>
           </button>
-          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFile} />
-
-          {/* Text */}
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder={isDragging ? 'Drop file here…' : 'Ask Rubra'}
-            disabled={isStreaming}
-            rows={1}
-            className="flex-1 bg-transparent resize-none text-white/90 text-[13.5px] placeholder-white/30 outline-none ring-0 max-h-[200px] py-1.5 leading-relaxed"
-          />
-
-          {/* Send / Stop */}
-          {isStreaming ? (
-            <button
-              onClick={onStop}
-              className="shrink-0 w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 flex items-center justify-center transition-colors"
-              aria-label="Stop"
-            >
-              <Square size={14} className="text-white" fill="currentColor" />
-            </button>
-          ) : (
-            <button
-              onClick={handleSend}
-              disabled={!canSend}
-              className={clsx(
-                'shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all',
-                canSend
-                  ? 'bg-white text-[#131314] hover:bg-white/90 active:scale-95'
-                  : 'bg-white/8 text-white/20 cursor-not-allowed'
-              )}
-              aria-label="Send"
-            >
-              <Send size={15} />
-            </button>
-          )}
-        </div>
-
-        <p className="text-[11px] text-white/20 text-center mt-2">
-          Rubra can make mistakes. Check important info.
-        </p>
+        ) : (
+          <button onClick={handleSend} className={`bg-transparent p-2 rounded-full transition ${input.trim() ? 'text-gemini-accent hover:bg-[#2a3950]' : 'text-gray-500 cursor-not-allowed'}`}>
+             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+             </svg>
+          </button>
+        )}
       </div>
+      <p className="text-center text-xs text-[#a0a0a0] mt-3">
+        Rubra can make mistakes. Consider verifying important information.
+      </p>
     </div>
-  )
+  );
 }
