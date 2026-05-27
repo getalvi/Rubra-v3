@@ -54,9 +54,6 @@ export default function ChatBar() {
           </button>
         )}
       </div>
-      <p className="text-center text-xs text-[#a0a0a0] mt-3">
-        Rubra can make mistakes. Consider verifying important information.
-      </p>
     </div>
   );
 }
