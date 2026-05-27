@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+/* import React, { useState } from 'react'
 import Sidebar from '../components/Sidebar/index.jsx'
 import ChatWindow from '../components/ChatWindow/index.jsx'
 import useChat from '../hooks/useChat'
@@ -76,4 +76,26 @@ export default function App() {
       />
     </div>
   )
+}
+*/
+
+import React from 'react';
+import Sidebar from '../components/Sidebar';
+import ChatWindow from '../components/ChatWindow';
+import ChatBar from '../components/ChatBar';
+
+export default function App() {
+  return (
+    <div className="flex h-screen w-full bg-gemini-bg text-gemini-text font-sans overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 flex flex-col relative h-full items-center">
+        <div className="w-full max-w-4xl flex-1 overflow-y-auto pb-32">
+          <ChatWindow />
+        </div>
+        <div className="w-full absolute bottom-0 flex justify-center pb-6 pt-10 bg-gradient-to-t from-gemini-bg via-gemini-bg to-transparent">
+          <ChatBar />
+        </div>
+      </main>
+    </div>
+  );
 }
