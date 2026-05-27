@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { ChatContext } from './hooks/useChat'; 
-import Sidebar from './components/Sidebar';
-import MessageThread from './components/MessageThread';
-import ChatBar from './components/ChatBar';
+import { ChatContext } from '../hooks/useChat'; 
+import Sidebar from '../components/Sidebar';
+import MessageThread from '../components/MessageThread';
+import ChatBar from '../components/ChatBar';
 
 export default function App() {
   const [messages, setMessages] = useState([]);
