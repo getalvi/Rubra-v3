@@ -1,66 +1,73 @@
-# RUBRA AI — Frontend v2
+# React + TypeScript + Vite
 
-iOS 26 Liquid Glass · React + Tailwind · Claude-like layout
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Folder Structure
+Currently, two official plugins are available:
 
-```
-rubra-v2/
-├── public/
-│   └── favicon.svg
-├── src/
-│   ├── api/
-│   │   └── index.js              ← All backend calls (SSE, upload, tools)
-│   ├── components/
-│   │   ├── Sidebar/
-│   │   │   └── index.jsx         ← Glass sidebar: session list, new chat, search
-│   │   ├── ChatWindow/
-│   │   │   └── index.jsx         ← Header + welcome screen + layout container
-│   │   ├── MessageThread/
-│   │   │   └── index.jsx         ← Message list: markdown, code, streaming
-│   │   └── ChatBar/
-│   │       └── index.jsx         ← Glass input bar: text, file, drag-drop, stop
-│   ├── hooks/
-│   │   └── useChat.js            ← All chat state: sessions, messages, streaming
-│   ├── pages/
-│   │   └── App.jsx               ← Root layout (scene bg + sidebar + chat)
-│   └── styles/
-│       └── globals.css           ← Tailwind base + glass mixins + prose styles
-├── .env.example
-├── index.html
-├── package.json
-├── tailwind.config.js
-├── vite.config.js
-└── vercel.json
-```
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Quick Start
+## React Compiler
 
-```bash
-npm install
-cp .env.example .env
-# Edit .env → set VITE_API_URL to your HuggingFace Space
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-npm run dev        # http://localhost:3000
-npm run build      # production build → dist/
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-## Deploy to Vercel
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-1. Push to GitHub
-2. Import in Vercel → Framework: **Vite**
-3. Add env var: `VITE_API_URL` = `https://your-username-rubra.hf.space`
-4. Deploy
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-## Design System
-
-| Token | Value |
-|---|---|
-| Background | `#060606` + deep red radial glow |
-| Glass blur | `backdrop-filter: blur(28px)` |
-| Glass bg | `rgba(255,255,255,0.035–0.075)` |
-| Border | `0.5px solid rgba(255,255,255,0.07)` |
-| Brand | `#c0392b` (deep crimson, no light red) |
-| Font | Inter + JetBrains Mono |
-| Sidebar width | 255px |
-| Header height | 52px |
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
