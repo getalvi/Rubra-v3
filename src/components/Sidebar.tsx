@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, PanelLeftClose, MessageSquare } from 'lucide-react';
 import IconButton from '@/components/ui/IconButton';
@@ -19,6 +19,14 @@ const Sidebar: React.FC = () => {
   } = useChat();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleNewChat = () => {
     createSession();
@@ -36,7 +44,7 @@ const Sidebar: React.FC = () => {
     <>
       {/* Mobile backdrop */}
       <AnimatePresence>
-        {isSidebarOpen && (
+        {isSidebarOpen && isMobile && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -52,7 +60,7 @@ const Sidebar: React.FC = () => {
       <motion.aside
         initial={false}
         animate={{
-          x: isSidebarOpen ? 0 : isCollapsed ? -300 : 0,
+          x: isSidebarOpen ? 0 : (isMobile || isCollapsed) ? -320 : 0,
         }}
         transition={{ type: 'tween', duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         className={`
@@ -61,6 +69,7 @@ const Sidebar: React.FC = () => {
           bg-[#1a1a1a] border-r border-[#282a2c]
           flex flex-col z-[60] lg:z-40
           ${isCollapsed ? 'lg:hidden' : ''}
+          ${!isSidebarOpen && isMobile ? 'pointer-events-none lg:pointer-events-auto' : ''}
         `}
       >
         {/* Top Bar */}
