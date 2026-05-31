@@ -12,7 +12,12 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ visible }) => {
   const { toggleSidebar, mode, setMode } = useChat();
-
+  
+  <button onClick={createSession} className="...">
+  <Plus size={18} />
+  <span className="hidden sm:inline">New chat</span>
+  </button>
+  
   return (
     <motion.header
       initial={{ opacity: 0 }}
