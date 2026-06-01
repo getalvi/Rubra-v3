@@ -31,7 +31,7 @@ const InputBar: React.FC = () => {
     }
   }, [input, file, isStreaming, sendMessage]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -44,13 +44,16 @@ const InputBar: React.FC = () => {
       // Limit file size to 10MB
       if (selected.size > 10 * 1024 * 1024) {
         alert('File size must be less than 10MB');
+        e.target.value = '';
         return;
       }
       setFile(selected);
     }
+    // Reset input so same file can be selected again
+    e.target.value = '';
   };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragOver(false);
     const dropped = e.dataTransfer.files?.[0];
@@ -63,12 +66,12 @@ const InputBar: React.FC = () => {
     }
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragOver(true);
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragOver(false);
   }, []);
@@ -123,7 +126,7 @@ const InputBar: React.FC = () => {
       {/* Input container */}
       <div
         className={`
-          relative flex items-end gap-2 
+          relative flex items-end gap-2
           bg-[#1e1f20] border rounded-3xl
           shadow-input
           transition-all duration-200
