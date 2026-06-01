@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, PanelLeftClose, MessageSquare } from 'lucide-react';
+import { Plus, X, MessageSquare } from 'lucide-react';
 import IconButton from '@/components/ui/IconButton';
 import SessionItem from '@/components/ui/SessionItem';
 import useChat from '@/hooks/useChat';
@@ -16,9 +16,9 @@ const Sidebar: React.FC = () => {
     deleteSession,
     renameSession,
     toggleSidebar,
+    isSidebarCollapsed,
   } = useChat();
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -34,7 +34,8 @@ const Sidebar: React.FC = () => {
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
-      setIsCollapsed(!isCollapsed);
+      // Desktop collapse is handled by Header, but keep this for safety
+      // Actually, we can remove this since Header handles desktop toggle
     } else {
       toggleSidebar();
     }
@@ -60,20 +61,20 @@ const Sidebar: React.FC = () => {
       <motion.aside
         initial={false}
         animate={{
-          x: isSidebarOpen ? 0 : (isMobile || isCollapsed) ? -320 : 0,
+          x: isSidebarOpen ? 0 : (isMobile || isSidebarCollapsed) ? -350 : 0,
         }}
         transition={{ type: 'tween', duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         className={`
           fixed lg:relative top-0 left-0 h-full
           w-[280px] sm:w-[300px] lg:w-[300px]
           bg-[#1a1a1a] border-r border-[#282a2c]
-          flex flex-col z-[60] lg:z-40
-          ${isCollapsed ? 'lg:hidden' : ''}
+          flex flex-col z-[60] lg:z-[55]
+          ${isSidebarCollapsed ? 'lg:hidden' : ''}
           ${!isSidebarOpen && isMobile ? 'pointer-events-none lg:pointer-events-auto' : ''}
         `}
       >
         {/* Top Bar */}
-        <div className="flex items-center gap-2 p-3">
+        <div className="flex items-center gap-2 p-3 pt-20 lg:pt-3">
           <button
             onClick={handleNewChat}
             className="
@@ -88,9 +89,6 @@ const Sidebar: React.FC = () => {
           </button>
           <div className="lg:hidden">
             <IconButton icon={X} onClick={() => setSidebarOpen(false)} tooltip="Close" />
-          </div>
-          <div className="hidden lg:block">
-            <IconButton icon={PanelLeftClose} onClick={handleToggle} tooltip="Collapse" />
           </div>
         </div>
 
@@ -150,13 +148,6 @@ const Sidebar: React.FC = () => {
           </div>
         </div>
       </motion.aside>
-
-      {/* Toggle button when collapsed (desktop) */}
-      {isCollapsed && (
-        <div className="hidden lg:block fixed top-4 left-4 z-40">
-          <IconButton icon={PanelLeftClose} onClick={handleToggle} tooltip="Expand sidebar" />
-        </div>
-      )}
     </>
   );
 };
