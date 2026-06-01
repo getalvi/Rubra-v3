@@ -35,12 +35,14 @@ interface ChatState {
   mode: AIMode;
   isLoading: boolean;
   toasts: Toast[];
+  isSidebarCollapsed: boolean;
 }
 
 interface ChatActions {
   sendMessage: (text: string, file?: File | null) => void;
   stopStreaming: () => void;
   editMessage: (id: string, newText: string) => void;
+  regenerateMessage: (id: string) => void;
   deleteMessage: (id: string) => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -51,6 +53,7 @@ interface ChatActions {
   setMode: (mode: AIMode) => void;
   addToast: (message: string, type?: Toast['type']) => void;
   removeToast: (id: string) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
 }
 
 const ChatContext = createContext<(ChatState & ChatActions) | null>(null);
@@ -74,9 +77,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   });
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
     try {
-      return localStorage.getItem('rubra_active_session');
+      const val = localStorage.getItem('rubra_active_session');
+      return val || null;
     } catch {
       return null;
     }
@@ -99,13 +104,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const messagesRef = useRef<Message[]>([]);
   messagesRef.current = messages;
 
-  // Persist messages and active session
+  // Persist messages
   useEffect(() => {
-    localStorage.setItem('rubra_messages', JSON.stringify(messages));
+    try {
+      localStorage.setItem('rubra_messages', JSON.stringify(messages));
+    } catch (e) {
+      console.warn('Failed to save messages:', e);
+    }
   }, [messages]);
 
+  // Persist active session (store null properly)
   useEffect(() => {
-    localStorage.setItem('rubra_active_session', activeSessionId || '');
+    try {
+      if (activeSessionId) {
+        localStorage.setItem('rubra_active_session', activeSessionId);
+      } else {
+        localStorage.removeItem('rubra_active_session');
+      }
+    } catch (e) {
+      console.warn('Failed to save active session:', e);
+    }
   }, [activeSessionId]);
 
   // -- Toast helpers --------------------------------------------------------
@@ -137,18 +155,41 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       };
       setSessions(prev => {
         const updated = [newSession, ...prev];
-        localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+        try {
+          localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+        } catch (e) {
+          console.warn('Failed to save sessions:', e);
+        }
         return updated;
       });
     } else {
-      // Update session title if first message
+      // Update session title if first message, or add session if missing
       setSessions(prev => {
         const session = prev.find(s => s.id === sessionId);
         if (session && messagesRef.current.length === 0) {
           const updated = prev.map(s =>
             s.id === sessionId ? { ...s, title: generateTitle(text), timestamp: Date.now() } : s
           );
-          localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+          try {
+            localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+          } catch (e) {
+            console.warn('Failed to save sessions:', e);
+          }
+          return updated;
+        }
+        if (!session) {
+          // Session was created via createSession but not yet in list
+          const newSession: Session = {
+            id: sessionId,
+            title: generateTitle(text || 'New chat'),
+            timestamp: Date.now(),
+          };
+          const updated = [newSession, ...prev];
+          try {
+            localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+          } catch (e) {
+            console.warn('Failed to save sessions:', e);
+          }
           return updated;
         }
         return prev;
@@ -263,16 +304,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const editMessage = useCallback((id: string, newText: string) => {
     if (!newText.trim()) return;
 
-    // Find the message index
     const msgIndex = messagesRef.current.findIndex(m => m.id === id);
     if (msgIndex === -1) return;
 
-    // Keep messages up to and including the edited message
     const keepMessages = messagesRef.current.slice(0, msgIndex + 1).map(m =>
       m.id === id ? { ...m, text: newText, edited: true, timestamp: Date.now() } : m
     );
 
-    // Add new assistant placeholder
     const assistantId = uuidv4();
     const assistantMsg: Message = {
       id: assistantId,
@@ -330,6 +368,83 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     );
   }, [activeSessionId, mode, addToast]);
 
+  // -- Regenerate Message (for AI messages) ---------------------------------
+  const regenerateMessage = useCallback((id: string) => {
+    const aiIndex = messagesRef.current.findIndex(m => m.id === id);
+    if (aiIndex === -1) return;
+
+    // Find the last user message before this AI message
+    let userIndex = -1;
+    for (let i = aiIndex - 1; i >= 0; i--) {
+      if (messagesRef.current[i].role === 'user') {
+        userIndex = i;
+        break;
+      }
+    }
+    if (userIndex === -1) return;
+
+    const userMsg = messagesRef.current[userIndex];
+
+    // Keep messages up to and including the user message
+    const keepMessages = messagesRef.current.slice(0, userIndex + 1);
+
+    const assistantId = uuidv4();
+    const assistantMsg: Message = {
+      id: assistantId,
+      role: 'assistant',
+      text: '',
+      timestamp: Date.now(),
+      streaming: true,
+    };
+
+    setMessages([...keepMessages, assistantMsg]);
+    setIsStreaming(true);
+
+    abortRef.current = api.sendMessage(
+      { message: userMsg.text, sessionId: activeSessionId || undefined, mode },
+      {
+        onEvent: (event) => {
+          if (event.type === 'token' && event.content !== undefined) {
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, text: event.content || '', streaming: !event.done }
+                  : m
+              )
+            );
+          } else if (event.type === 'error') {
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, text: `Error: ${event.message}`, streaming: false }
+                  : m
+              )
+            );
+          }
+        },
+        onDone: () => {
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantId ? { ...m, streaming: false } : m
+            )
+          );
+          setIsStreaming(false);
+        },
+        onError: (err) => {
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantId
+                ? { ...m, text: `Error: ${err.message}`, streaming: false }
+                : m
+            )
+          );
+          setIsStreaming(false);
+          addToast(err.message, 'error');
+        },
+      }
+    );
+  }, [activeSessionId, mode, addToast]);
+
   // -- Delete Message -------------------------------------------------------
   const deleteMessage = useCallback((id: string) => {
     setMessages(prev => prev.filter(m => m.id !== id));
@@ -342,6 +457,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const setSidebarOpen = useCallback((open: boolean) => {
     setIsSidebarOpen(open);
+  }, []);
+
+  const setSidebarCollapsed = useCallback((collapsed: boolean) => {
+    setIsSidebarCollapsed(collapsed);
   }, []);
 
   // -- Load Session ---------------------------------------------------------
@@ -383,7 +502,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       await api.deleteSession(id);
       setSessions(prev => {
         const updated = prev.filter(s => s.id !== id);
-        localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+        try {
+          localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+        } catch (e) {
+          console.warn('Failed to save sessions:', e);
+        }
         return updated;
       });
       if (activeSessionId === id) {
@@ -402,7 +525,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const updated = prev.map(s =>
         s.id === id ? { ...s, title } : s
       );
-      localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+      try {
+        localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Failed to save sessions:', e);
+      }
       return updated;
     });
   }, []);
@@ -427,7 +554,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           const newSessions = formatted.filter(s => !existingIds.has(s.id));
           if (newSessions.length > 0) {
             const updated = [...prev, ...newSessions].sort((a, b) => b.timestamp - a.timestamp);
-            localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+            try {
+              localStorage.setItem('rubra_sessions', JSON.stringify(updated));
+            } catch (e) {
+              console.warn('Failed to save sessions:', e);
+            }
             return updated;
           }
           return prev;
@@ -447,9 +578,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     mode,
     isLoading,
     toasts,
+    isSidebarCollapsed,
     sendMessage,
     stopStreaming,
     editMessage,
+    regenerateMessage,
     deleteMessage,
     toggleSidebar,
     setSidebarOpen,
@@ -460,6 +593,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setMode,
     addToast,
     removeToast,
+    setSidebarCollapsed,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
