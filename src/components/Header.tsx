@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Menu } from 'lucide-react';
+import { Menu, Plus } from 'lucide-react';
 import IconButton from '@/components/ui/IconButton';
 import ModeSelector from '@/components/ui/ModeSelector';
 import RubraAvatar from '@/components/ui/RubraAvatar';
@@ -10,8 +10,8 @@ interface HeaderProps {
   visible: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ visible }) => {
-  const { toggleSidebar, mode, setMode } = useChat();
+const Header: React.FC<<HeaderProps> = ({ visible }) => {
+  const { toggleSidebar, mode, setMode, createSession } = useChat();
 
   return (
     <motion.header
@@ -46,6 +46,20 @@ const Header: React.FC<HeaderProps> = ({ visible }) => {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* New Chat button - always visible */}
+        <button
+          onClick={createSession}
+          className="
+            flex items-center gap-2 px-3 py-2 rounded-xl
+            bg-[#212124] hover:bg-[#2a2a2e]
+            text-[#e8eaed] text-sm font-medium
+            transition-all duration-150
+          "
+          title="New chat"
+        >
+          <Plus size={18} />
+          <span className="hidden sm:inline">New chat</span>
+        </button>
         <ModeSelector mode={mode} onChange={setMode} />
         <RubraAvatar variant="user" size="sm" />
       </div>
