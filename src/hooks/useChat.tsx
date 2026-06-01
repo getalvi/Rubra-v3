@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useCallback, useState, useRef } from 'react';
+import React, { createContext, useContext, useCallback, useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import * as api from '@/api';
 
@@ -64,10 +64,23 @@ function generateTitle(text: string): string {
 
 // -- Provider ---------------------------------------------------------------
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const cached = localStorage.getItem('rubra_messages');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('rubra_active_session');
+    } catch {
+      return null;
+    }
+  });
   const [sessions, setSessions] = useState<Session[]>(() => {
     try {
       const cached = localStorage.getItem('rubra_sessions');
@@ -85,6 +98,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const abortRef = useRef<(() => void) | null>(null);
   const messagesRef = useRef<Message[]>([]);
   messagesRef.current = messages;
+
+  // Persist messages and active session
+  useEffect(() => {
+    localStorage.setItem('rubra_messages', JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem('rubra_active_session', activeSessionId || '');
+  }, [activeSessionId]);
 
   // -- Toast helpers --------------------------------------------------------
   const addToast = useCallback((message: string, type: Toast['type'] = 'info') => {
