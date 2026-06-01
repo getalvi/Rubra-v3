@@ -14,7 +14,7 @@ interface MessageBubbleProps {
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
-  const { editMessage } = useChat();
+  const { editMessage, regenerateMessage } = useChat();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(message.text);
@@ -33,7 +33,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     setIsEditing(false);
   };
 
-  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       handleEditSave();
@@ -163,7 +163,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 {copied ? <Check size={14} className="text-[#81c995]" /> : <Copy size={14} />}
               </button>
               <button
-                onClick={() => editMessage(message.id, message.text)}
+                onClick={() => regenerateMessage(message.id)}
                 className="p-1.5 rounded-lg hover:bg-[#2a2a2e] text-[#9aa0a6] hover:text-[#e8eaed] transition-colors"
                 title="Regenerate"
               >
