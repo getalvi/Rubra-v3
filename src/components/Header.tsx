@@ -10,7 +10,7 @@ interface HeaderProps {
   visible: boolean;
 }
 
-const Header: React.FC<<HeaderProps> = ({ visible }) => {
+const Header: React.FC<HeaderProps> = ({ visible }) => {
   const { toggleSidebar, mode, setMode, createSession } = useChat();
 
   return (
