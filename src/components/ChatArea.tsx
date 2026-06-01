@@ -9,10 +9,17 @@ const ChatArea: React.FC = () => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom on new messages
+  // Smart auto-scroll: only scroll if user is near bottom
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (bottomRef.current && containerRef.current) {
+      const container = containerRef.current;
+      const threshold = 150;
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      const isNearBottom = distanceFromBottom < threshold;
+
+      if (isNearBottom) {
+        bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   }, [messages]);
 
