@@ -1,23 +1,73 @@
-# RUBRA v3 UI Upgrade Documentation
+# React + TypeScript + Vite
 
-This update systematically refactors the interface layout, solves front-end viewport bugs shown in previous screenshots, embeds a brand new advanced geometric logo, and provides Kimi AI 2.6 placeholder interface features for agent workflows.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Key Fixes & Implementation Details
+Currently, two official plugins are available:
 
-1. **Logo & Favicon Integration**
-   - Created a unique continuous connected helix loop SVG featuring glowing mesh layers (`#ff5a48` and `#c0392b`).
-   - Injected the optimized logo as an inline data-URI favicon directly inside `index.html`.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-2. **Sidebar Overlapping & Redundancy Erasure**
-   - Segregated the UI into a 68px wide active `Icon Strip` and a `Secondary Text Panel` to remove component overlapping.
-   - Deleted the duplicate action controls and redundant avatar tiles at the footers.
+## React Compiler
 
-3. **Action Pills Positioning (UX Refinement)**
-   - Swapped the vertical flow to house the tool filter chips (`Code`, `Write`, `Research`, etc.) **ABOVE** the text capsule in `ChatInput.jsx`.
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-4. **Kimi AI v2.6 Agent Capabilities**
-   - Integrated front-end state handles and UI checkboxes for **Deep Research (Agent K2.6)** and **Web Search Extensions**.
-   - Added a code artifact rendering preview module inside `MessageList.jsx`.
+## Expanding the ESLint configuration
 
-5. **Stretch Protection Wrapper**
-   - Hardcoded a premium layout boundary container (`max-width: 850px; margin: 0 auto;`) ensuring texts and terminal boxes don't experience extreme infinite stretching on modern 2K/4K high-resolution monitors.
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
