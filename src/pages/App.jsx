@@ -6,48 +6,47 @@ import MessageList from "../components/MessageList";
 import ChatInput from "../components/ChatInput";
 import { useChat } from "../hooks/useChat";
 
-/* ── Tiny icon components ── */
+/* ── Icons ── */
 const HamIcon = () => (
   <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-    <path d="M3 6h18M3 12h18M3 18h18" stroke="rgba(255,255,255,0.75)" strokeWidth={1.8} strokeLinecap="round"/>
+    <path d="M3 6h18M3 12h18M3 18h18" stroke="rgba(255,255,255,0.72)" strokeWidth={1.8} strokeLinecap="round"/>
   </svg>
 );
 const NewIcon = () => (
   <svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-    <path d="M12 5v14M5 12h14" stroke="rgba(255,255,255,0.75)" strokeWidth={2} strokeLinecap="round"/>
+    <path d="M12 5v14M5 12h14" stroke="rgba(255,255,255,0.72)" strokeWidth={2} strokeLinecap="round"/>
   </svg>
 );
 const SearchIcon = () => (
   <svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-    <path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="rgba(255,255,255,0.55)" strokeWidth={1.6} strokeLinecap="round"/>
+    <path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="rgba(255,255,255,0.50)" strokeWidth={1.6} strokeLinecap="round"/>
   </svg>
 );
 const GearIcon = () => (
   <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="rgba(255,255,255,0.5)" strokeWidth={1.5}/>
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="rgba(255,255,255,0.5)" strokeWidth={1.5}/>
+    <circle cx="12" cy="12" r="3" stroke="rgba(255,255,255,0.48)" strokeWidth={1.5}/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="rgba(255,255,255,0.48)" strokeWidth={1.5}/>
   </svg>
 );
-
 const UserAvatar = () => (
   <div style={{
-    width:32, height:32, borderRadius:"50%",
+    width:30, height:30, borderRadius:"50%",
     background:"linear-gradient(135deg,#c0392b,#922b21)",
     border:"1.5px solid rgba(255,255,255,0.18)",
     display:"flex", alignItems:"center", justifyContent:"center",
-    fontSize:13, fontWeight:700, color:"white",
+    fontSize:12, fontWeight:700, color:"white", flexShrink:0,
   }}>U</div>
 );
 
-function IconBtn({ onClick, children, title }) {
-  const [hov, setHov] = useState(false);
+function SideIconBtn({ onClick, children, title }) {
+  const [h, setH] = useState(false);
   return (
-    <button
-      onClick={onClick} title={title}
-      onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+    <button onClick={onClick} title={title}
+      onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}
       style={{
-        background: hov ? "rgba(255,255,255,0.08)" : "transparent",
-        border:"none", cursor:"pointer", width:38, height:38, borderRadius:10,
+        background: h ? "rgba(255,255,255,0.08)" : "transparent",
+        border:"none", cursor:"pointer",
+        width:40, height:40, borderRadius:10,
         display:"flex", alignItems:"center", justifyContent:"center",
         transition:"background 0.15s", flexShrink:0,
       }}
@@ -56,11 +55,15 @@ function IconBtn({ onClick, children, title }) {
 }
 
 export default function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Desktop sidebar panel open/close (separate from the icon strip which always shows)
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(true); // desktop panel default open
   const [isMobile, setIsMobile] = useState(false);
-  const { messages, sendMessage, clearChat, isStreaming, sessionId } = useChat();
+
+  const {
+    sessions, activeId, messages, isStreaming,
+    sendMessage, newChat, selectSession, deleteSession,
+    editMessage, retryMessage,
+  } = useChat();
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -74,49 +77,51 @@ export default function App() {
   return (
     <div style={{
       width:"100vw", height:"100dvh", overflow:"hidden",
-      display:"flex", flexDirection:"row",
-      position:"relative", background:"#060610",
+      display:"flex", background:"#060610",
+      position:"relative",
     }}>
-      {/* ── Live wave canvas ── */}
       <WaveBackground />
 
-      {/* ══════════ DESKTOP LAYOUT ══════════ */}
+      {/* ═══ DESKTOP ═══ */}
       {!isMobile && (
         <>
-          {/* Left icon strip — always visible */}
+          {/* Thin icon strip — always visible */}
           <div style={{
-            position:"relative", zIndex:20, width:60, height:"100%",
-            background:"rgba(8,6,14,0.75)",
+            position:"relative", zIndex:20, width:56, height:"100%",
+            background:"rgba(6,5,14,0.80)",
             backdropFilter:"blur(28px)", WebkitBackdropFilter:"blur(28px)",
             borderRight:"0.5px solid rgba(255,255,255,0.07)",
             display:"flex", flexDirection:"column", alignItems:"center",
-            paddingTop:14, paddingBottom:14, gap:4, flexShrink:0,
+            paddingTop:12, paddingBottom:12, gap:2, flexShrink:0,
           }}>
-            {/* Hamburger opens/closes the panel */}
-            <IconBtn onClick={()=>setPanelOpen(v=>!v)} title="Toggle sidebar">
-              <HamIcon />
-            </IconBtn>
-            <div style={{ height:8 }} />
-            <IconBtn onClick={clearChat} title="New chat"><NewIcon /></IconBtn>
-            <IconBtn title="Search"><SearchIcon /></IconBtn>
-            <div style={{ flex:1 }} />
-            <IconBtn title="Settings"><GearIcon /></IconBtn>
-            <IconBtn title="Profile"><UserAvatar /></IconBtn>
+            <SideIconBtn onClick={()=>setPanelOpen(v=>!v)} title="Toggle sidebar">
+              <HamIcon/>
+            </SideIconBtn>
+            <div style={{height:6}}/>
+            <SideIconBtn onClick={newChat} title="New chat"><NewIcon/></SideIconBtn>
+            <SideIconBtn title="Search"><SearchIcon/></SideIconBtn>
+            <div style={{flex:1}}/>
+            <SideIconBtn title="Settings"><GearIcon/></SideIconBtn>
+            <SideIconBtn title="Profile"><UserAvatar/></SideIconBtn>
           </div>
 
-          {/* Collapsible sidebar panel */}
+          {/* Collapsible panel */}
           <div style={{
             position:"relative", zIndex:19, height:"100%",
-            width: panelOpen ? 256 : 0,
+            width: panelOpen ? 260 : 0,
             overflow:"hidden",
             transition:"width 0.32s cubic-bezier(0.22,1,0.36,1)",
             flexShrink:0,
           }}>
-            <div style={{ width:256, height:"100%", position:"relative" }}>
+            <div style={{ width:260, height:"100%", position:"relative" }}>
               <Sidebar
                 open={true}
                 onClose={()=>setPanelOpen(false)}
-                onNewChat={clearChat}
+                onNewChat={newChat}
+                onSelectSession={selectSession}
+                onDeleteSession={deleteSession}
+                activeSessionId={activeId}
+                sessions={sessions}
                 isMobile={false}
               />
             </div>
@@ -124,17 +129,21 @@ export default function App() {
         </>
       )}
 
-      {/* ══════════ MOBILE LAYOUT ══════════ */}
+      {/* ═══ MOBILE SIDEBAR ═══ */}
       {isMobile && (
         <Sidebar
-          open={sidebarOpen}
-          onClose={()=>setSidebarOpen(false)}
-          onNewChat={clearChat}
+          open={sidebarMobileOpen}
+          onClose={()=>setSidebarMobileOpen(false)}
+          onNewChat={newChat}
+          onSelectSession={selectSession}
+          onDeleteSession={deleteSession}
+          activeSessionId={activeId}
+          sessions={sessions}
           isMobile={true}
         />
       )}
 
-      {/* ══════════ MAIN CONTENT ══════════ */}
+      {/* ═══ MAIN AREA ═══ */}
       <div style={{
         flex:1, display:"flex", flexDirection:"column",
         height:"100%", overflow:"hidden",
@@ -145,34 +154,38 @@ export default function App() {
         {isMobile && (
           <div style={{
             display:"flex", alignItems:"center", justifyContent:"space-between",
-            padding:"14px 16px 8px", flexShrink:0,
+            padding:"14px 14px 8px", flexShrink:0,
           }}>
-            <IconBtn onClick={()=>setSidebarOpen(true)} title="Menu"><HamIcon /></IconBtn>
+            <SideIconBtn onClick={()=>setSidebarMobileOpen(true)} title="Menu"><HamIcon/></SideIconBtn>
 
-            {/* RUBRA logo center */}
-            <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+            {/* Center logo */}
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               <span style={{
-                width:18, height:18, borderRadius:"50%", flexShrink:0,
+                width:18, height:18, borderRadius:"50%", display:"inline-block",
                 background:"radial-gradient(circle at 38% 36%,#ff5a48,#c0392b)",
-                boxShadow:"0 0 10px rgba(192,57,43,0.6)", display:"inline-block",
+                boxShadow:"0 0 10px rgba(192,57,43,0.6)",
               }}/>
-              <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:17, color:"white", letterSpacing:"0.06em" }}>
+              <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:18, color:"white", letterSpacing:"0.06em" }}>
                 RUBRA
               </span>
             </div>
 
-            <IconBtn onClick={clearChat} title="New chat"><NewIcon /></IconBtn>
+            <SideIconBtn onClick={newChat} title="New chat"><NewIcon/></SideIconBtn>
           </div>
         )}
 
-        {/* Welcome screen or message list */}
+        {/* Content */}
         {!hasMessages
-          ? <Welcome isMobile={isMobile} />
-          : <MessageList messages={messages} />
+          ? <Welcome isMobile={isMobile}/>
+          : <MessageList
+              messages={messages}
+              onEditMessage={editMessage}
+              onRetry={retryMessage}
+            />
         }
 
         {/* Input */}
-        <ChatInput onSend={sendMessage} disabled={isStreaming} />
+        <ChatInput onSend={sendMessage} disabled={isStreaming}/>
       </div>
     </div>
   );
