@@ -57,6 +57,7 @@ export default function App(){
   const {
     user, loading, displayName, initials,
     signUp, signIn, signOut, resetPassword,
+    signInGoogle, signInGithub, signInFacebook,
     resetFormTimer, attemptsLeft, isLockedOut,
   } = useAuth();
 
@@ -114,6 +115,9 @@ export default function App(){
           onSignUp={signUp}
           onResetPassword={resetPassword}
           attemptsLeft={attemptsLeft}
+          onGoogleLogin={signInGoogle}
+          onGithubLogin={signInGithub}
+          onFacebookLogin={signInFacebook}
           isLockedOut={isLockedOut}
           onFormStart={resetFormTimer}
         />
