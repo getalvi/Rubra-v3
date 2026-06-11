@@ -8,7 +8,7 @@ export const supabase = createClient(
       autoRefreshToken:   true,
       persistSession:     true,
       detectSessionInUrl: true,
-      flowType:           "pkce",
+      flowType:           "implicit", // 👈 "pkce" পরিবর্তন করে "implicit" করা হয়েছে
     },
   }
 );
