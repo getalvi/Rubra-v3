@@ -40,14 +40,14 @@ function Splash(){
 }
 
 export default function App() {
-  const { user, loading, displayName, initials, signUp, signIn, signOut, resetPassword } = useAuth();
+  const { user, loading, healthy, displayName, initials, signUp, signIn, signOut, resetPassword } = useAuth();
   const [isMobile,  setIsMobile]  = useState(false);
   const [mobOpen,   setMobOpen]   = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [fpFiles,   setFpFiles]   = useState([]);
   const [fpOpen,    setFpOpen]    = useState(false);
 
-  const { sessions, activeId, messages, isStreaming, sendMessage, newChat, selectSession, deleteSession, editMessage, retryMessage } = useChat();
+  const { sessions, activeId, messages, isStreaming, sendMessage, newChat, selectSession, deleteSession, editMessage, retryMessage, renameSession } = useChat();
 
   useEffect(() => {
     const chk = () => setIsMobile(window.innerWidth < 768);
@@ -80,7 +80,11 @@ export default function App() {
 
       {/* ── auth modal gate ── */}
       {!user && (
-        <AuthModal onSignIn={signIn} onSignUp={signUp} onResetPassword={resetPassword}/>
+        <AuthModal
+          onSignIn={signIn} onSignUp={signUp} onResetPassword={resetPassword}
+          healthy={healthy}
+          onRetryHealth={()=>window.location.reload()}
+        />
       )}
 
       {/* ── desktop layout ── */}
@@ -109,7 +113,7 @@ export default function App() {
             <div style={{ width:240, height:"100%" }}>
               <Sidebar open={true} isMobile={false}
                 onClose={()=>setPanelOpen(false)} onNewChat={newChat}
-                onSelectSession={selectSession} onDeleteSession={deleteSession}
+                onSelectSession={selectSession} onDeleteSession={deleteSession} onRenameSession={renameSession}
                 activeSessionId={activeId} sessions={sessions}
                 user={user} displayName={displayName} initials={initials} onSignOut={signOut}/>
             </div>
@@ -121,7 +125,7 @@ export default function App() {
       {isMobile && (
         <Sidebar open={mobOpen} isMobile={true}
           onClose={()=>setMobOpen(false)} onNewChat={newChat}
-          onSelectSession={selectSession} onDeleteSession={deleteSession}
+          onSelectSession={selectSession} onDeleteSession={deleteSession} onRenameSession={renameSession}
           activeSessionId={activeId} sessions={sessions}
           user={user} displayName={displayName} initials={initials} onSignOut={signOut}/>
       )}

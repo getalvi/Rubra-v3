@@ -106,9 +106,16 @@ export function useChat() {
     if (activeId === id) setActiveId(null);
   }, [activeId]);
 
+  /* ── Rename a session's title manually ── */
+  const renameSession = useCallback((id, newTitle) => {
+    const title = newTitle.trim();
+    if (!title) return;
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, title } : s));
+  }, []);
+
   return {
     sessions, activeId, messages, isStreaming,
     sendMessage, newChat, selectSession, deleteSession,
-    editMessage, retryMessage,
+    editMessage, retryMessage, renameSession,
   };
 }
