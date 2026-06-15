@@ -47,7 +47,7 @@ export default function App() {
   const [fpFiles,   setFpFiles]   = useState([]);
   const [fpOpen,    setFpOpen]    = useState(false);
 
-  const { sessions, activeId, messages, isStreaming, sendMessage, newChat, selectSession, deleteSession, editMessage, retryMessage, renameSession } = useChat();
+  const { sessions, activeId, messages, isStreaming, sendMessage, newChat, selectSession, deleteSession, editMessage, retryMessage, renameSession, stopGeneration } = useChat();
 
   useEffect(() => {
     const chk = () => setIsMobile(window.innerWidth < 768);
@@ -144,7 +144,7 @@ export default function App() {
               ? <Welcome isMobile={isMobile} displayName={user ? displayName : ""}/>
               : <MessageList messages={messages} onEditMessage={editMessage} onRetry={retryMessage} onOpenFilePanel={openFP}/>
             }
-            <ChatInput onSend={sendMessage} disabled={isStreaming || !user}/>
+            <ChatInput onSend={sendMessage} onStop={stopGeneration} isStreaming={isStreaming} disabled={!user}/>
           </div>
 
           {showFP && (

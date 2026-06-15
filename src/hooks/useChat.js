@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { streamChat } from "../services/api";
 import { uid } from "../utils/parse";
 
@@ -10,6 +10,7 @@ export function useChat() {
   const [sessions,    setSessions]    = useState([]);
   const [activeId,    setActiveId]    = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const abortRef = useRef(null);
 
   const activeSession = sessions.find(s => s.id === activeId) || null;
   const messages      = activeSession?.messages || [];
@@ -43,8 +44,12 @@ export function useChat() {
     ));
     setIsStreaming(true);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     await streamChat({
       message:text, sessionId:sid, mode,
+      signal: controller.signal,
       onToken: (_chunk, full) => {
         setSessions(prev => prev.map(s =>
           s.id === sid
@@ -52,15 +57,16 @@ export function useChat() {
             : s
         ));
       },
-      onDone: (full) => {
+      onDone: (full, meta) => {
         setSessions(prev => prev.map(s =>
           s.id === sid
             ? { ...s, messages: s.messages.map(m =>
-                m.id===asstMid ? {...m, content:full||m.content, streaming:false} : m
+                m.id===asstMid ? {...m, content:full||m.content, streaming:false, stopped: !!meta?.stopped} : m
               )}
             : s
         ));
         setIsStreaming(false);
+        abortRef.current = null;
       },
       onError: (err) => {
         setSessions(prev => prev.map(s =>
@@ -71,9 +77,15 @@ export function useChat() {
             : s
         ));
         setIsStreaming(false);
+        abortRef.current = null;
       },
     });
   }, [isStreaming, ensureSession]);
+
+  /* ── Stop the current generation ── */
+  const stopGeneration = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   /* ── Edit user message → trim + resend ── */
   const editMessage = useCallback((msgId, newContent) => {
@@ -116,6 +128,6 @@ export function useChat() {
   return {
     sessions, activeId, messages, isStreaming,
     sendMessage, newChat, selectSession, deleteSession,
-    editMessage, retryMessage, renameSession,
+    editMessage, retryMessage, renameSession, stopGeneration,
   };
 }

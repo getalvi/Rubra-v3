@@ -1,12 +1,13 @@
 const BASE = "https://getalvi-rubra-v3.hf.space";
 
-export async function streamChat({ message, sessionId, mode="auto", onToken, onDone, onError }) {
+export async function streamChat({ message, sessionId, mode="auto", onToken, onDone, onError, signal }) {
   let fullText = "";
   try {
     const res = await fetch(`${BASE}/api/chat/stream`, {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({ message, session_id:sessionId, mode, stream:true, force_hermes:false }),
+      signal,
     });
 
     if (!res.ok) {
@@ -43,6 +44,10 @@ export async function streamChat({ message, sessionId, mode="auto", onToken, onD
     }
     onDone?.(fullText);
   } catch(err) {
+    if (err?.name === "AbortError") {
+      onDone?.(fullText, { stopped: true });
+      return;
+    }
     onError?.(err);
   }
 }
