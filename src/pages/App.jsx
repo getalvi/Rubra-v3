@@ -75,7 +75,16 @@ export default function App() {
   const showFP  = fpOpen && fpFiles.length > 0 && !isMobile;
 
   return (
-    <div className="w-screen overflow-hidden flex relative" style={{ height:"100dvh", background:"#0a0a0f" }}>
+    <div
+      className="w-screen overflow-hidden relative"
+      style={{
+        height: "100dvh",
+        background: "#0a0a0f",
+        display: isMobile ? "flex" : "grid",
+        gridTemplateColumns: isMobile ? undefined : (panelOpen ? "260px 1fr" : "60px 1fr"),
+        transition: isMobile ? undefined : "grid-template-columns 0.3s ease",
+      }}
+    >
       <WaveBackground/>
 
       {/* ── auth modal gate ── */}
@@ -87,51 +96,34 @@ export default function App() {
         />
       )}
 
-      {/* ── desktop layout ── */}
+      {/* ── desktop sidebar (CSS Grid column 1) ── */}
       {!isMobile && (
-        <>
-          {/* icon strip */}
-          <div className="relative z-20 flex-shrink-0 flex flex-col items-center py-3 gap-1"
-            style={{ width:54, background:"#0d0d14", borderRight:"1px solid #1a1a2a" }}>
-            <IBtn onClick={()=>setPanelOpen(v=>!v)} title="Toggle sidebar"><HamI/></IBtn>
-            <div className="h-2"/>
-            <IBtn onClick={newChat} title="New chat"><NewI/></IBtn>
-            <div className="flex-1"/>
-            <IBtn title="Settings"><GearI/></IBtn>
-            {user && (
-              <button onClick={()=>setPanelOpen(true)} title="Profile"
-                className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white mb-2 cursor-pointer"
-                style={{ background:"linear-gradient(135deg,#c0392b,#7b241c)" }}>
-                {initials}
-              </button>
-            )}
-          </div>
-
-          {/* collapsible sidebar */}
-          <div className="relative z-10 flex-shrink-0 h-full overflow-hidden"
-            style={{ width: panelOpen ? 240 : 0, transition:"width .25s ease" }}>
-            <div style={{ width:240, height:"100%" }}>
-              <Sidebar open={true} isMobile={false}
-                onClose={()=>setPanelOpen(false)} onNewChat={newChat}
-                onSelectSession={selectSession} onDeleteSession={deleteSession} onRenameSession={renameSession}
-                activeSessionId={activeId} sessions={sessions}
-                user={user} displayName={displayName} initials={initials} onSignOut={signOut}/>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ── mobile sidebar ── */}
-      {isMobile && (
-        <Sidebar open={mobOpen} isMobile={true}
-          onClose={()=>setMobOpen(false)} onNewChat={newChat}
+        <Sidebar
+          expanded={panelOpen}
+          onToggle={() => setPanelOpen(v => !v)}
+          onNewChat={newChat}
           onSelectSession={selectSession} onDeleteSession={deleteSession} onRenameSession={renameSession}
           activeSessionId={activeId} sessions={sessions}
-          user={user} displayName={displayName} initials={initials} onSignOut={signOut}/>
+          isMobile={false}
+          user={user} displayName={displayName} initials={initials} onSignOut={signOut}
+        />
+      )}
+
+      {/* ── mobile sidebar (fixed overlay) ── */}
+      {isMobile && (
+        <Sidebar
+          expanded={true}
+          onToggle={() => {}}
+          onNewChat={newChat}
+          onSelectSession={selectSession} onDeleteSession={deleteSession} onRenameSession={renameSession}
+          activeSessionId={activeId} sessions={sessions}
+          isMobile={true} mobileOpen={mobOpen} onMobileClose={()=>setMobOpen(false)}
+          user={user} displayName={displayName} initials={initials} onSignOut={signOut}
+        />
       )}
 
       {/* ── main content ── */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative z-10 min-w-0">
+      <div className="flex flex-col h-full overflow-hidden relative z-10" style={{ minWidth: 0 }}>
 
         {/* mobile top bar */}
         {isMobile && (
