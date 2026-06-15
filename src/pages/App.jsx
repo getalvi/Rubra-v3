@@ -81,7 +81,7 @@ export default function App() {
         height: "100dvh",
         background: "#0a0a0f",
         display: isMobile ? "flex" : "grid",
-        gridTemplateColumns: isMobile ? undefined : (panelOpen ? "260px 1fr" : "60px 1fr"),
+        gridTemplateColumns: isMobile ? undefined : (!user ? "1fr" : (panelOpen ? "260px 1fr" : "60px 1fr")),
         transition: isMobile ? undefined : "grid-template-columns 0.3s ease",
       }}
     >
@@ -97,7 +97,7 @@ export default function App() {
       )}
 
       {/* ── desktop sidebar (CSS Grid column 1) ── */}
-      {!isMobile && (
+      {!isMobile && user && (
         <Sidebar
           expanded={panelOpen}
           onToggle={() => setPanelOpen(v => !v)}
@@ -110,7 +110,7 @@ export default function App() {
       )}
 
       {/* ── mobile sidebar (fixed overlay) ── */}
-      {isMobile && (
+      {isMobile && user && (
         <Sidebar
           expanded={true}
           onToggle={() => {}}
