@@ -17,7 +17,7 @@ const GearI  = () => <Ico d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.
 function IBtn({ onClick, children, title, className="" }) {
   return (
     <button onClick={onClick} title={title}
-      className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-100 hover:bg-[#1e1e2e] text-[#5a5a7a] hover:text-[#c0c0d8] ${className}`}>
+      className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-100 hover:bg-[#1e1e2e] text-[#b0b0c8] hover:text-white ${className}`}>
       {children}
     </button>
   );
@@ -85,9 +85,9 @@ export default function Sidebar({
           <button
             onClick={() => { onNewChat(); if (isMobile) onClose(); }}
             className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-150"
-            style={{ background:"#e8301f", color:"#ffffff" }}
-            onMouseEnter={e => e.currentTarget.style.background="#c9281a"}
-            onMouseLeave={e => e.currentTarget.style.background="#e8301f"}
+            style={{ background:"#7b241c", color:"#ffffff" }}
+            onMouseEnter={e => e.currentTarget.style.background="#5e1b15"}
+            onMouseLeave={e => e.currentTarget.style.background="#7b241c"}
           >
             <PlusI/> New Chat
           </button>
@@ -97,7 +97,7 @@ export default function Sidebar({
         <div className="px-3 mb-3 flex-shrink-0">
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search sessions…"
             className="w-full px-3 py-1.5 text-xs rounded-md outline-none transition-colors"
-            style={{ background:"#111118", border:"1px solid #1a1a2a", color:"#8080a0" }}
+            style={{ background:"#111118", border:"1px solid #1a1a2a", color:"#e8e8f0" }}
             onFocus={e => e.target.style.borderColor="#2a2a4a"}
             onBlur={e  => e.target.style.borderColor="#1a1a2a"}
           />
@@ -135,7 +135,7 @@ export default function Sidebar({
                       />
                     ) : (
                       <span className="text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap pr-1"
-                        style={{ color: s.id === activeSessionId ? "#c0c0d8" : "#6a6a8a" }}>
+                        style={{ color: s.id === activeSessionId ? "#ffffff" : "#c0c0d0" }}>
                         {s.title}
                       </span>
                     )}
@@ -144,11 +144,11 @@ export default function Sidebar({
                     {renamingId !== s.id && (
                       <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
                         <span onClick={e => { e.stopPropagation(); startRename(s); }}
-                          className="text-[#4a4a6a] hover:text-[#c0c0d8] transition-colors" title="Rename">
+                          className="text-[#9090a8] hover:text-white transition-colors" title="Rename">
                           <PenI/>
                         </span>
                         <span onClick={e => { e.stopPropagation(); onDeleteSession(s.id); }}
-                          className="text-[#4a4a6a] hover:text-[#f87171] transition-colors" title="Delete">
+                          className="text-[#9090a8] hover:text-[#f87171] transition-colors" title="Delete">
                           <TrashI/>
                         </span>
                       </div>
@@ -159,7 +159,7 @@ export default function Sidebar({
             )
           )}
           {sessions.length === 0 && (
-            <p className="text-center text-xs py-8" style={{ color:"#2e2e4e" }}>
+            <p className="text-center text-xs py-8" style={{ color:"#6a6a8a" }}>
               No sessions yet.<br/>Start a new chat.
             </p>
           )}
@@ -173,8 +173,8 @@ export default function Sidebar({
               {initials}
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-medium text-ellipsis overflow-hidden whitespace-nowrap" style={{ color:"#8080a0" }}>{displayName}</div>
-              <div className="text-[10px] text-ellipsis overflow-hidden whitespace-nowrap" style={{ color:"#3a3a55" }}>{user?.email}</div>
+              <div className="text-xs font-medium text-ellipsis overflow-hidden whitespace-nowrap" style={{ color:"#ffffff" }}>{displayName}</div>
+              <div className="text-[10px] text-ellipsis overflow-hidden whitespace-nowrap" style={{ color:"#8888a0" }}>{user?.email}</div>
             </div>
           </div>
           <div className="flex gap-1 flex-shrink-0">

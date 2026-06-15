@@ -12,4 +12,15 @@
   * { scrollbar-width: thin; scrollbar-color: #1e1e2e transparent; }
   *::-webkit-scrollbar { width: 4px; }
   *::-webkit-scrollbar-thumb { background: #1e1e2e; border-radius: 4px; }
+
+  /* Prevent Chrome autofill from forcing a white background + dark text */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #e8e8f0 !important;
+    -webkit-box-shadow: 0 0 0 1000px #111118 inset !important;
+    box-shadow: 0 0 0 1000px #111118 inset !important;
+    caret-color: #e8301f;
+    transition: background-color 5000s ease-in-out 0s;
+  }
 }
