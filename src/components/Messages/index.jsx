@@ -203,14 +203,85 @@ function ActionRow({ msg, onEdit, onRetry, onCopy }) {
   );
 }
 
+/* ── Step icons ── */
+const SearchStepI = () => (
+  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+);
+const ToolStepI = () => (
+  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.77z"/>
+  </svg>
+);
+const ChevronI = ({ open }) => (
+  <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"
+    style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)", transition:"transform .15s" }}>
+    <path d="M9 6l6 6-6 6"/>
+  </svg>
+);
+const CheckI = () => (
+  <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 6L9 17l-5-5"/>
+  </svg>
+);
+const SpinnerI = () => (
+  <span className="inline-block w-2.5 h-2.5 rounded-full border-2 flex-shrink-0"
+    style={{ borderColor:"#3a3a55", borderTopColor:"#e8301f", animation:"spin .6s linear infinite" }}/>
+);
+
+function stepIcon(type, label) {
+  const l = (label || "").toLowerCase();
+  if (l.includes("search") || l.includes("web") || l.includes("browse")) return <SearchStepI/>;
+  return <ToolStepI/>;
+}
+
+/* ── Claude-style collapsible step list (e.g. "Searched the web >") ── */
+function StepsList({ steps, streaming }) {
+  const [open, setOpen] = useState(false);
+  if (!steps || steps.length === 0) return null;
+
+  const allDone = steps.every(s => s.done);
+  const summary = steps.length === 1
+    ? steps[0].label
+    : `Ran ${steps.length} steps`;
+
+  return (
+    <div className="mb-3">
+      <button onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 text-xs transition-colors"
+        style={{ color:"#6a6a8a" }}
+        onMouseEnter={e => e.currentTarget.style.color = "#9090b0"}
+        onMouseLeave={e => e.currentTarget.style.color = "#6a6a8a"}>
+        <ChevronI open={open}/>
+        <span>{summary}</span>
+        {streaming && !allDone && <SpinnerI/>}
+      </button>
+
+      {open && (
+        <div className="mt-1.5 pl-1 flex flex-col gap-1.5 border-l" style={{ borderColor:"#1e1e2e", marginLeft:5 }}>
+          {steps.map((s, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs pl-3" style={{ color:"#8080a0" }}>
+              <span className="flex-shrink-0" style={{ color:"#5a5a7a" }}>{stepIcon(s.type, s.label)}</span>
+              <span className="flex-1 truncate">{s.label}</span>
+              {s.done ? <CheckI/> : (streaming ? <SpinnerI/> : null)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Message content ── */
-function MsgContent({ content, streaming, onOpenPanel }) {
+function MsgContent({ content, streaming, steps, onOpenPanel }) {
   const [present, setPresent] = useState(false);
   const safe = typeof content === "string" ? content : String(content ?? "");
   const segs  = parseSegments(safe);
   const hasCode = segs.some(s => s.type==="code");
   return (
     <div className="text-sm leading-relaxed" style={{ color:"#b0b0c8" }}>
+      <StepsList steps={steps} streaming={streaming}/>
       {!streaming && hasCode && (
         <div className="mb-3">
           <button onClick={()=>setPresent(v=>!v)}
@@ -245,6 +316,7 @@ export default function MessageList({ messages, onEditMessage, onRetry, onOpenFi
     <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-5 max-w-3xl w-full mx-auto" style={{ boxSizing:"border-box" }}>
       <style>{`
         @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+        @keyframes spin{to{transform:rotate(360deg)}}
         .msg-wrap:hover .action-row{opacity:1}
       `}</style>
 
@@ -269,7 +341,7 @@ export default function MessageList({ messages, onEditMessage, onRetry, onOpenFi
                     ⚠ Backend error — check the connection
                   </div>
                 )}
-                <MsgContent content={msg.content} streaming={msg.streaming}
+                <MsgContent content={msg.content} streaming={msg.streaming} steps={msg.steps}
                   onOpenPanel={seg=>onOpenFilePanel?.({lang:seg.lang,content:seg.content})}/>
               </div>
               {!msg.streaming && <ActionRow msg={msg} onEdit={()=>setEditing(msg)} onRetry={()=>onRetry?.(msg)} onCopy={()=>{}}/>}

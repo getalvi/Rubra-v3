@@ -16,28 +16,84 @@ const AttI = () => (
     <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
   </svg>
 );
+const FileI = () => (
+  <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+    <polyline points="13 2 13 9 20 9"/>
+  </svg>
+);
+const CloseI = () => (
+  <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
+    <path d="M18 6L6 18M6 6l12 12"/>
+  </svg>
+);
 
 const PILLS = ["Code </>", "Write", "Research", "Learn", "News"];
 
+/* Threshold above which pasted text becomes a collapsed "Pasted content" block */
+const PASTE_LINE_THRESHOLD = 15;
+const PASTE_CHAR_THRESHOLD = 800;
+
+function langGuess(text) {
+  if (/^\s*(import |from |def |class |print\()/m.test(text)) return "python";
+  if (/^\s*(function |const |let |var |import .* from|export )/m.test(text)) return "javascript";
+  if (/^\s*[{[]/.test(text.trim()) && /[}\]]\s*$/.test(text.trim())) return "json";
+  if (/^\s*<\/?[a-z]/i.test(text.trim())) return "html";
+  return "text";
+}
+
 export default function ChatInput({ onSend, onStop, isStreaming, disabled }) {
-  const [val, setVal] = useState("");
+  const [val, setVal]     = useState("");
+  const [pasted, setPasted] = useState([]); // [{ id, content, lines, lang }]
   const ref = useRef(null);
+
+  const resetHeight = () => { if (ref.current) ref.current.style.height = "auto"; };
 
   const submit = () => {
     const t = val.trim();
-    if (!t || isStreaming || disabled) return;
-    onSend(t); setVal("");
-    if (ref.current) ref.current.style.height = "auto";
+    if ((!t && pasted.length === 0) || isStreaming || disabled) return;
+
+    // Reconstruct full message: pasted blocks become fenced code blocks, appended after typed text
+    let full = t;
+    for (const p of pasted) {
+      const fence = "```" + (p.lang !== "text" ? p.lang : "") + "\n" + p.content + "\n```";
+      full = full ? `${full}\n\n${fence}` : fence;
+    }
+
+    onSend(full);
+    setVal(""); setPasted([]);
+    resetHeight();
   };
 
   const onKey = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } };
+
   const onInput = e => {
     setVal(e.target.value);
     const ta = ref.current;
     if (ta) { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 140) + "px"; }
   };
 
-  const canSend = val.trim() && !disabled && !isStreaming;
+  /* ── Intercept large pastes ── */
+  const onPaste = e => {
+    const text = e.clipboardData?.getData("text");
+    if (!text) return;
+    const lineCount = text.split("\n").length;
+    if (lineCount > PASTE_LINE_THRESHOLD || text.length > PASTE_CHAR_THRESHOLD) {
+      e.preventDefault();
+      setPasted(prev => [...prev, {
+        id: Date.now() + Math.random().toString(36).slice(2),
+        content: text,
+        lines: lineCount,
+        chars: text.length,
+        lang: langGuess(text),
+      }]);
+    }
+    // small pastes fall through to normal textarea behavior
+  };
+
+  const removePasted = (id) => setPasted(prev => prev.filter(p => p.id !== id));
+
+  const canSend = (val.trim() || pasted.length > 0) && !disabled && !isStreaming;
 
   return (
     <div className="px-4 pb-5 max-w-3xl w-full mx-auto">
@@ -45,9 +101,33 @@ export default function ChatInput({ onSend, onStop, isStreaming, disabled }) {
       <div className="rounded-xl overflow-hidden"
         style={{ background:"#111118", border:"1px solid #1e1e2e" }}>
 
+        {/* ── Pasted content cards ── */}
+        {pasted.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-3.5 pt-3">
+            {pasted.map(p => (
+              <div key={p.id}
+                className="flex items-center gap-2 rounded-lg pl-2.5 pr-1.5 py-1.5"
+                style={{ background:"#1a1a2a", border:"1px solid #26263a", maxWidth:220 }}>
+                <FileI/>
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-white truncate">Pasted content</div>
+                  <div className="text-[10px]" style={{ color:"#5a5a7a" }}>{p.lines} lines · {p.lang}</div>
+                </div>
+                <button onClick={() => removePasted(p.id)} title="Remove"
+                  className="flex-shrink-0 ml-1 w-5 h-5 rounded flex items-center justify-center transition-colors"
+                  style={{ color:"#5a5a7a" }}
+                  onMouseEnter={e => { e.currentTarget.style.background="#26263a"; e.currentTarget.style.color="#f87171"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#5a5a7a"; }}>
+                  <CloseI/>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-start px-3.5 pt-3 pb-1.5 gap-2">
           <textarea
-            ref={ref} value={val} onChange={onInput} onKeyDown={onKey}
+            ref={ref} value={val} onChange={onInput} onKeyDown={onKey} onPaste={onPaste}
             disabled={disabled} placeholder="Type something…" rows={1}
             className="flex-1 resize-none outline-none text-sm leading-relaxed bg-transparent"
             style={{ color:"#e8e8f0", caretColor:"#e8301f", minHeight:24, maxHeight:140, opacity: disabled ? 0.5 : 1 }}

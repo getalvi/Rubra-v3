@@ -34,7 +34,7 @@ export function useChat() {
     const userMid  = uid();
     const asstMid  = uid();
     const userMsg  = { id:userMid, role:"user",      content:text, ts:Date.now() };
-    const asstMsg  = { id:asstMid, role:"assistant", content:"",   ts:Date.now(), streaming:true };
+    const asstMsg  = { id:asstMid, role:"assistant", content:"",   ts:Date.now(), streaming:true, steps:[] };
 
     setSessions(prev => prev.map(s =>
       s.id === sid
@@ -54,6 +54,28 @@ export function useChat() {
         setSessions(prev => prev.map(s =>
           s.id === sid
             ? { ...s, messages: s.messages.map(m => m.id===asstMid ? {...m, content:full} : m) }
+            : s
+        ));
+      },
+      onStep: (evt) => {
+        setSessions(prev => prev.map(s =>
+          s.id === sid
+            ? { ...s, messages: s.messages.map(m => {
+                if (m.id !== asstMid) return m;
+                const steps = [...(m.steps || [])];
+                const last  = steps[steps.length - 1];
+                // collapse consecutive duplicates of the same step type+label
+                if (!last || last.type !== evt.type || last.label !== (evt.text || evt.name || evt.agent)) {
+                  steps.push({
+                    type:  evt.type,
+                    label: evt.text || evt.name || evt.agent || evt.intent || "Working…",
+                    done:  evt.type === "tool_result",
+                  });
+                } else if (evt.type === "tool_result") {
+                  last.done = true;
+                }
+                return { ...m, steps };
+              })}
             : s
         ));
       },
