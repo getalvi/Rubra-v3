@@ -1,4 +1,7 @@
-/** Parse markdown text into segments: text | code */
+/** Parse markdown text into segments: text | code
+ *  Also detects an explicit filename if present right before the fence,
+ *  e.g. "**App.jsx**" or "`src/App.jsx`" on the line just above ```lang
+ */
 export function parseSegments(text) {
   if (typeof text !== "string") text = String(text ?? "");
   const segs = [];
@@ -6,24 +9,78 @@ export function parseSegments(text) {
   let last = 0, m;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) segs.push({ type: "text", content: text.slice(last, m.index) });
-    segs.push({ type: "code", lang: m[1] || "text", content: m[2] || "" });
+    const filename = detectFilenameAbove(text, m.index);
+    segs.push({ type: "code", lang: m[1] || "text", content: m[2] || "", filename });
     last = m.index + m[0].length;
   }
   if (last < text.length) segs.push({ type: "text", content: text.slice(last) });
   return segs.length ? segs : [{ type: "text", content: text }];
 }
 
+/** Look at the text immediately preceding a code fence for a filename hint */
+function detectFilenameAbove(text, fenceIndex) {
+  const before = text.slice(Math.max(0, fenceIndex - 120), fenceIndex);
+  const lines = before.split("\n").filter(Boolean);
+  const lastLine = lines[lines.length - 1] || "";
+  // Matches: **App.jsx**, `src/App.jsx`, ### App.jsx, App.jsx:
+  const patterns = [
+    /\*\*([\w./-]+\.\w+)\*\*\s*$/,
+    /`([\w./-]+\.\w+)`\s*$/,
+    /#{1,4}\s*([\w./-]+\.\w+)\s*$/,
+    /^([\w./-]+\.\w+):?\s*$/,
+  ];
+  for (const p of patterns) {
+    const found = lastLine.match(p);
+    if (found) return found[1];
+  }
+  return null;
+}
+
 /** Extract virtual file objects from parsed segments */
 export function extractFiles(segments, msgId) {
+  const used = new Set();
   return segments
     .filter(s => s.type === "code")
-    .map((s, i) => ({
-      id: `${msgId}-code-${i}`,
-      lang: s.lang,
-      content: s.content,
-      name: inferFilename(s.lang, i),
-      size: new Blob([s.content]).size,
-    }));
+    .map((s, i) => {
+      let name = s.filename || inferFilename(s.lang, i);
+      // avoid duplicate names within the same message
+      let finalName = name, n = 2;
+      while (used.has(finalName)) {
+        const dot = name.lastIndexOf(".");
+        finalName = dot > -1 ? `${name.slice(0,dot)}_${n}${name.slice(dot)}` : `${name}_${n}`;
+        n++;
+      }
+      used.add(finalName);
+      return {
+        id: `${msgId}-code-${i}`,
+        lang: s.lang,
+        content: s.content,
+        name: finalName,
+        path: finalName, // path === name unless filename includes folders (e.g. "src/App.jsx")
+        size: new Blob([s.content]).size,
+      };
+    });
+}
+
+/** Build a VS Code-style nested folder tree from a flat list of files (path-based) */
+export function buildFileTree(files) {
+  const root = { type: "folder", name: "", children: {} };
+  for (const file of files) {
+    const parts = file.path.split("/").filter(Boolean);
+    let node = root;
+    parts.forEach((part, idx) => {
+      const isFile = idx === parts.length - 1;
+      if (isFile) {
+        node.children[part] = { type: "file", name: part, file };
+      } else {
+        if (!node.children[part]) {
+          node.children[part] = { type: "folder", name: part, children: {} };
+        }
+        node = node.children[part];
+      }
+    });
+  }
+  return root;
 }
 
 function inferFilename(lang, idx) {

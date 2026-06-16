@@ -8,7 +8,7 @@ import FilePanel      from "../components/FilePanel/index.jsx";
 import AuthModal      from "../components/AuthModal";
 import { useChat }    from "../hooks/useChat";
 import { useAuth }    from "../hooks/useAuth";
-import { uid }        from "../utils/parse";
+import { uid, extractFiles, parseSegments } from "../utils/parse";
 
 /* icons */
 const Ico = ({d,s=20})=><svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
@@ -63,9 +63,20 @@ export default function App() {
     return () => window.removeEventListener("keydown", fn);
   }, [user]);
 
-  const openFP = useCallback(({ lang, content }) => {
-    const ext = {javascript:"js",typescript:"ts",python:"py",html:"html",css:"css",json:"json",bash:"sh",sql:"sql",rust:"rs",go:"go",java:"java",cpp:"cpp"}[lang?.toLowerCase()]||"txt";
-    setFpFiles([{ id:uid(), lang, content, name:`code.${ext}`, size:new Blob([content]).size }]);
+  /* Open a single code block in the panel */
+  const openFP = useCallback(({ lang, content, filename }) => {
+    const ext  = {javascript:"js",typescript:"ts",python:"py",html:"html",css:"css",json:"json",bash:"sh",sql:"sql",rust:"rs",go:"go",java:"java",cpp:"cpp"}[lang?.toLowerCase()]||"txt";
+    const name = filename || `code.${ext}`;
+    setFpFiles([{ id:uid(), lang, content, name, path:name, size:new Blob([content]).size }]);
+    setFpOpen(true);
+  }, []);
+
+  /* Open ALL code blocks from a message as a multi-file project (enables file tree) */
+  const openProjectFP = useCallback((msg) => {
+    const segs  = parseSegments(typeof msg.content === "string" ? msg.content : "");
+    const files = extractFiles(segs, msg.id);
+    if (files.length === 0) return;
+    setFpFiles(files);
     setFpOpen(true);
   }, []);
 
@@ -142,7 +153,7 @@ export default function App() {
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
             {!hasMsg
               ? <Welcome isMobile={isMobile} displayName={user ? displayName : ""}/>
-              : <MessageList messages={messages} onEditMessage={editMessage} onRetry={retryMessage} onOpenFilePanel={openFP}/>
+              : <MessageList messages={messages} onEditMessage={editMessage} onRetry={retryMessage} onOpenFilePanel={openFP} onOpenProject={openProjectFP} onAskFollowUp={sendMessage} isStreaming={isStreaming}/>
             }
             <ChatInput onSend={sendMessage} onStop={stopGeneration} isStreaming={isStreaming} disabled={!user}/>
           </div>
@@ -150,7 +161,7 @@ export default function App() {
           {showFP && (
             <>
               <div className="flex-shrink-0 w-px" style={{ background:"#1a1a2a" }}/>
-              <div className="flex-shrink-0 h-full" style={{ width:420 }}>
+              <div className="flex-shrink-0 h-full" style={{ width:520 }}>
                 <FilePanel files={fpFiles} onClose={()=>{ setFpOpen(false); setFpFiles([]); }}/>
               </div>
             </>

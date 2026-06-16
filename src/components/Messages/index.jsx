@@ -14,6 +14,7 @@ const EditI  = () => <Ico d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0
 const RetryI = () => <Ico d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/>;
 const DownI  = () => <Ico d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>;
 const ExpI   = () => <Ico d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>;
+const ExplainI = () => <Ico d="M12 18h.01M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2 1.7-2.5 3.2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/>;
 
 /* ── Cursor ── */
 const Cursor = () => (
@@ -58,7 +59,7 @@ function TextBlock({ text }) {
 }
 
 /* ── Code block ── */
-function CodeBlock({ seg, onOpenPanel }) {
+function CodeBlock({ seg, onOpenPanel, onExplain }) {
   const [copied, setCopied] = useState(false);
   const [hidden, setHidden] = useState(false);
   const lines = seg.content.split("\n").length;
@@ -85,6 +86,9 @@ function CodeBlock({ seg, onOpenPanel }) {
           <span className="text-xs" style={{ color:"#2e2e4e" }}>{lines} lines</span>
         </div>
         <div className="flex items-center gap-1">
+          {onExplain && (
+            <Btn onClick={() => onExplain(seg)} label="Explain"><ExplainI/></Btn>
+          )}
           {lines > 25 && (
             <Btn onClick={() => onOpenPanel?.(seg)} label="Panel"><ExpI/></Btn>
           )}
@@ -274,27 +278,37 @@ function StepsList({ steps, streaming }) {
 }
 
 /* ── Message content ── */
-function MsgContent({ content, streaming, steps, onOpenPanel }) {
+function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onExplain }) {
   const [present, setPresent] = useState(false);
   const safe = typeof content === "string" ? content : String(content ?? "");
   const segs  = parseSegments(safe);
-  const hasCode = segs.some(s => s.type==="code");
+  const codeCount = segs.filter(s => s.type === "code").length;
+  const hasCode = codeCount > 0;
   return (
     <div className="text-sm leading-relaxed" style={{ color:"#b0b0c8" }}>
       <StepsList steps={steps} streaming={streaming}/>
       {!streaming && hasCode && (
-        <div className="mb-3">
+        <div className="mb-3 flex items-center gap-2 flex-wrap">
           <button onClick={()=>setPresent(v=>!v)}
             className="text-xs px-2.5 py-1 rounded-lg transition-colors"
             style={{ background: present?"rgba(232,48,31,0.12)":"#111118", border:`1px solid ${present?"rgba(232,48,31,0.3)":"#1e1e2e"}`, color:present?"#e8301f":"#5a5a7a" }}>
             {present ? "Chat view" : "Presentation view"}
           </button>
+          {codeCount > 1 && onOpenProject && (
+            <button onClick={onOpenProject}
+              className="text-xs px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1.5"
+              style={{ background:"#111118", border:"1px solid #1e1e2e", color:"#5a5a7a" }}
+              onMouseEnter={e=>e.currentTarget.style.color="#a0a0c0"}
+              onMouseLeave={e=>e.currentTarget.style.color="#5a5a7a"}>
+              📁 View as Project ({codeCount} files)
+            </button>
+          )}
         </div>
       )}
       {present
         ? <PresentView segs={segs}/>
         : segs.map((s,i) => s.type==="code"
-            ? <CodeBlock key={i} seg={s} onOpenPanel={onOpenPanel}/>
+            ? <CodeBlock key={i} seg={s} onOpenPanel={onOpenPanel} onExplain={onExplain}/>
             : <TextBlock key={i} text={s.content}/>
           )
       }
@@ -304,13 +318,14 @@ function MsgContent({ content, streaming, steps, onOpenPanel }) {
 }
 
 /* ── Main export ── */
-export default function MessageList({ messages, onEditMessage, onRetry, onOpenFilePanel }) {
+export default function MessageList({ messages, onEditMessage, onRetry, onOpenFilePanel, onOpenProject, onAskFollowUp, isStreaming }) {
   const botRef = useRef(null);
   const [editing, setEditing] = useState(null);
 
   useEffect(() => { botRef.current?.scrollIntoView({ behavior:"smooth", block:"end" }); }, [messages]);
 
   const saveEdit = (v) => { onEditMessage?.(editing.id, v); setEditing(null); };
+  const isLastMsg = (idx) => idx === messages.length - 1;
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-5 max-w-3xl w-full mx-auto" style={{ boxSizing:"border-box" }}>
@@ -342,9 +357,25 @@ export default function MessageList({ messages, onEditMessage, onRetry, onOpenFi
                   </div>
                 )}
                 <MsgContent content={msg.content} streaming={msg.streaming} steps={msg.steps}
-                  onOpenPanel={seg=>onOpenFilePanel?.({lang:seg.lang,content:seg.content})}/>
+                  onOpenPanel={seg=>onOpenFilePanel?.({lang:seg.lang,content:seg.content})}
+                  onOpenProject={()=>onOpenProject?.(msg)}
+                  onExplain={seg=>onAskFollowUp?.(`Explain this ${seg.lang||""} code:\n\n\`\`\`${seg.lang||""}\n${seg.content}\n\`\`\``)}
+                />
               </div>
-              {!msg.streaming && <ActionRow msg={msg} onEdit={()=>setEditing(msg)} onRetry={()=>onRetry?.(msg)} onCopy={()=>{}}/>}
+              {!msg.streaming && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <ActionRow msg={msg} onEdit={()=>setEditing(msg)} onRetry={()=>onRetry?.(msg)} onCopy={()=>{}}/>
+                  {isLastMsg(idx) && !isStreaming && (
+                    <button onClick={()=>onAskFollowUp?.("Continue")}
+                      className="text-xs px-2.5 py-1 rounded-lg transition-colors opacity-0 action-row"
+                      style={{ background:"#111118", border:"1px solid #1e1e2e", color:"#5a5a7a" }}
+                      onMouseEnter={e=>e.currentTarget.style.color="#a0a0c0"}
+                      onMouseLeave={e=>e.currentTarget.style.color="#5a5a7a"}>
+                      Continue →
+                    </button>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

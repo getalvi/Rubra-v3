@@ -1,20 +1,20 @@
-import { useState } from "react";
-import { langColor, fmtSize } from "../../utils/parse";
+import { useState, useEffect } from "react";
+import { langColor, fmtSize, buildFileTree } from "../../utils/parse";
+import FileTree from "./FileTree";
+import LivePreview, { isPreviewable } from "./LivePreview";
+import ExportBar from "./ExportBar";
 
 /* Icons */
-const I = ({ d, s=16, c="rgba(255,255,255,0.6)", sw=1.5, fill="none" }) => (
-  <svg width={s} height={s} viewBox="0 0 24 24" fill={fill}>
-    <path d={d} stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"/>
+const Ico = ({ d, s=15, sw=1.6 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d}/>
   </svg>
 );
-const CloseI    = () => <I d="M18 6L6 18M6 6l12 12" c="rgba(255,255,255,0.5)"/>;
-const CopyI     = ({ok}) => ok
-  ? <I d="M20 6L9 17l-5-5" c="#4ade80" sw={2}/>
-  : <I d="M8 17.9H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2M10 21h8a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/>;
-const DownI     = () => <I d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" c="rgba(255,255,255,0.65)"/>;
-const WrapI     = () => <I d="M3 6h18M3 12h12M3 18h15M17 15l3-3-3-3" c="rgba(255,255,255,0.5)"/>;
-const MaxI      = () => <I d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>;
-const FileI     = () => <I d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />;
+const CloseI    = () => <Ico d="M18 6L6 18M6 6l12 12" s={14} sw={2}/>;
+const WrapI     = () => <Ico d="M3 6h18M3 12h12M3 18h15M17 15l3-3-3-3" s={14}/>;
+const SidebarI  = () => <Ico d="M9 3v18M3 3h18v18H3z" s={14}/>;
+const CodeIco   = () => <Ico d="M16 18l6-6-6-6M8 6l-6 6 6 6" s={13}/>;
+const EyeIco    = () => <Ico d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" s={13}/>;
 
 function langLabel(lang) {
   const m = { js:"JavaScript", javascript:"JavaScript", ts:"TypeScript", typescript:"TypeScript",
@@ -24,162 +24,34 @@ function langLabel(lang) {
   return m[lang?.toLowerCase()] || lang || "Text";
 }
 
-function lineCount(code) {
-  return (code || "").split("\n").length;
-}
-
-/* ── Single file viewer ── */
-function FileViewer({ file, onClose }) {
-  const [copied, setCopied]   = useState(false);
-  const [wordWrap, setWrap]   = useState(true);
-  const [expanded, setExpand] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(file.content);
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDownload = () => {
-    const blob = new Blob([file.content], { type:"text/plain" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href = url; a.download = file.name; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const lines = lineCount(file.content);
-  const dot   = langColor(file.lang);
-
-  return (
-    <div style={{
-      display:"flex", flexDirection:"column", height:"100%",
-      background:"rgba(8,7,18,0.97)",
-      animation:"fadeIn 0.18s var(--ease)",
-    }}>
-      {/* File header */}
-      <div style={{
-        display:"flex", alignItems:"center", justifyContent:"space-between",
-        padding:"12px 16px 10px",
-        borderBottom:"0.5px solid var(--border)",
-        flexShrink:0,
-      }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
-          <span style={{
-            width:9, height:9, borderRadius:"50%", background:dot, flexShrink:0,
-            boxShadow:`0 0 6px ${dot}88`,
-          }}/>
-          <span style={{
-            fontFamily:"'JetBrains Mono',monospace", fontSize:13, fontWeight:500,
-            color:"var(--text-primary)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
-          }}>{file.name}</span>
-          <span style={{
-            fontSize:10.5, color:"var(--text-dim)", fontWeight:600,
-            background:"rgba(255,255,255,0.06)", borderRadius:5,
-            padding:"2px 7px", flexShrink:0,
-          }}>{langLabel(file.lang)}</span>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
-          <span style={{ fontSize:11, color:"var(--text-dim)", marginRight:6 }}>
-            {lines}L · {fmtSize(file.size)}
-          </span>
-          <ActionBtn onClick={() => setWrap(v=>!v)} title="Toggle wrap" active={wordWrap}><WrapI/></ActionBtn>
-          <ActionBtn onClick={handleDownload} title="Download"><DownI/></ActionBtn>
-          <ActionBtn onClick={handleCopy} title="Copy"><CopyI ok={copied}/></ActionBtn>
-          <ActionBtn onClick={onClose} title="Close panel"><CloseI/></ActionBtn>
-        </div>
-      </div>
-
-      {/* Code area */}
-      <div style={{ flex:1, overflowY:"auto", overflowX: wordWrap ? "hidden" : "auto" }}>
-        <div style={{ display:"flex", minHeight:"100%" }}>
-          {/* Line numbers */}
-          <div style={{
-            padding:"16px 0", userSelect:"none", flexShrink:0,
-            borderRight:"0.5px solid rgba(255,255,255,0.06)",
-          }}>
-            {file.content.split("\n").map((_,i) => (
-              <div key={i} style={{
-                padding:"0 12px 0 16px",
-                fontSize:12.5, lineHeight:"1.65em",
-                color:"rgba(255,255,255,0.18)",
-                fontFamily:"'JetBrains Mono',monospace",
-                textAlign:"right", minWidth:44,
-              }}>{i+1}</div>
-            ))}
-          </div>
-          {/* Code */}
-          <pre style={{
-            flex:1, margin:0, padding:"16px 20px",
-            fontSize:13, lineHeight:1.65,
-            fontFamily:"'JetBrains Mono',monospace",
-            color:"rgba(210,210,245,0.90)",
-            whiteSpace: wordWrap ? "pre-wrap" : "pre",
-            wordBreak: wordWrap ? "break-word" : "normal",
-            overflowX: wordWrap ? "hidden" : "auto",
-          }}>
-            <code>{file.content}</code>
-          </pre>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ActionBtn({ onClick, title, active, children }) {
-  const [h, setH] = useState(false);
-  return (
-    <button onClick={onClick} title={title} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{
-      background: active || h ? "rgba(255,255,255,0.09)" : "transparent",
-      border:"none", cursor:"pointer",
-      width:30, height:30, borderRadius:7,
-      display:"flex", alignItems:"center", justifyContent:"center",
-      transition:"background 0.15s",
-    }}>{children}</button>
-  );
-}
-
 /* ── Tab strip ── */
 function TabStrip({ files, activeId, onSelect, onClose }) {
   return (
-    <div style={{
-      display:"flex", alignItems:"center", overflowX:"auto",
-      borderBottom:"0.5px solid var(--border)",
-      background:"rgba(6,5,14,0.6)", flexShrink:0,
-      scrollbarWidth:"none",
-    }}>
+    <div className="flex items-center overflow-x-auto flex-shrink-0" style={{ background:"#161620", borderBottom:"1px solid #232330", scrollbarWidth:"none" }}>
       {files.map(f => {
         const isActive = f.id === activeId;
         const dot = langColor(f.lang);
         return (
-          <div
-            key={f.id}
-            onClick={() => onSelect(f.id)}
+          <div key={f.id} onClick={() => onSelect(f.id)}
+            className="flex items-center gap-1.5 px-3 py-2 cursor-pointer flex-shrink-0 transition-colors"
             style={{
-              display:"flex", alignItems:"center", gap:7,
-              padding:"9px 14px 8px", cursor:"pointer", flexShrink:0,
-              borderRight:"0.5px solid var(--border)",
-              borderBottom: isActive ? "2px solid var(--accent)" : "2px solid transparent",
-              background: isActive ? "rgba(255,255,255,0.05)" : "transparent",
-              transition:"background 0.15s",
-            }}
-          >
-            <span style={{ width:7, height:7, borderRadius:"50%", background:dot, flexShrink:0 }}/>
-            <span style={{
-              fontSize:12.5, fontFamily:"'JetBrains Mono',monospace",
-              color: isActive ? "var(--text-primary)" : "var(--text-muted)",
-              whiteSpace:"nowrap", maxWidth:120, overflow:"hidden", textOverflow:"ellipsis",
-            }}>{f.name}</span>
-            <span
-              onClick={e => { e.stopPropagation(); onClose(f.id); }}
-              style={{
-                width:14, height:14, borderRadius:"50%",
-                display:"flex", alignItems:"center", justifyContent:"center",
-                color:"var(--text-dim)", fontSize:12, cursor:"pointer", flexShrink:0,
-                transition:"background 0.12s, color 0.12s",
-              }}
-              onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.12)";e.currentTarget.style.color="white";}}
-              onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="var(--text-dim)";}}
-            >×</span>
+              borderRight:"1px solid #232330",
+              borderBottom: isActive ? "2px solid #e8301f" : "2px solid transparent",
+              background: isActive ? "#1c1c28" : "transparent",
+            }}>
+            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }}/>
+            <span className="text-xs font-mono truncate" style={{ color: isActive ? "#ffffff" : "#8080a0", maxWidth:120 }}>
+              {f.name}
+            </span>
+            {files.length > 1 && (
+              <span onClick={e => { e.stopPropagation(); onClose(f.id); }}
+                className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-xs flex-shrink-0 transition-colors"
+                style={{ color:"#5a5a7a" }}
+                onMouseEnter={e => { e.currentTarget.style.background="#2a2a3a"; e.currentTarget.style.color="white"; }}
+                onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#5a5a7a"; }}>
+                ×
+              </span>
+            )}
           </div>
         );
       })}
@@ -187,69 +59,150 @@ function TabStrip({ files, activeId, onSelect, onClose }) {
   );
 }
 
-/* ── Main FilePanel export ── */
-export default function FilePanel({ files, onClose }) {
-  const [openFiles, setOpenFiles] = useState(files.length > 0 ? [files[0].id] : []);
-  const [activeTab, setActiveTab] = useState(files.length > 0 ? files[0].id : null);
+/* ── Code view (lightweight, no Monaco — keeps app fast) ── */
+function CodeView({ file, wordWrap }) {
+  if (!file) return null;
+  const lines = file.content.split("\n");
+  return (
+    <div className="flex-1 overflow-auto" style={{ background:"#0d0d12" }}>
+      <div className="flex min-h-full">
+        <div className="py-3.5 select-none flex-shrink-0" style={{ borderRight:"1px solid #1c1c28" }}>
+          {lines.map((_, i) => (
+            <div key={i} className="font-mono text-xs text-right leading-relaxed"
+              style={{ color:"#3a3a4a", minWidth:40, paddingRight:10, paddingLeft:14, lineHeight:"1.65em" }}>
+              {i + 1}
+            </div>
+          ))}
+        </div>
+        <pre className="flex-1 py-3.5 px-4 font-mono text-xs leading-relaxed"
+          style={{
+            color:"#c8cce8", margin:0,
+            whiteSpace: wordWrap ? "pre-wrap" : "pre",
+            wordBreak: wordWrap ? "break-word" : "normal",
+            overflowX: wordWrap ? "hidden" : "auto",
+          }}>
+          <code>{file.content}</code>
+        </pre>
+      </div>
+    </div>
+  );
+}
 
-  // Sync when new files arrive
-  const allIds = files.map(f=>f.id);
-  const newFile = files.find(f => !openFiles.includes(f.id));
-  if (newFile) {
-    setOpenFiles(prev => [...prev, newFile.id]);
-    setActiveTab(newFile.id);
-  }
+/* ── Main export ── */
+export default function FilePanel({ files, onClose }) {
+  const [openIds,   setOpenIds]   = useState(files.length ? [files[0].id] : []);
+  const [activeTab, setActiveTab] = useState(files.length ? files[0].id : null);
+  const [wordWrap,  setWordWrap]  = useState(false);
+  const [view,      setView]      = useState("code"); // code | preview
+  const [treeOpen,  setTreeOpen]  = useState(true);
+
+  // Sync newly-arrived files into open tabs automatically
+  useEffect(() => {
+    const newFile = files.find(f => !openIds.includes(f.id));
+    if (newFile) {
+      setOpenIds(prev => [...prev, newFile.id]);
+      setActiveTab(newFile.id);
+    }
+  }, [files]); // eslint-disable-line
 
   const closeTab = (id) => {
-    const next = openFiles.filter(x=>x!==id);
-    setOpenFiles(next);
-    if (activeTab === id) setActiveTab(next[next.length-1] || null);
+    const next = openIds.filter(x => x !== id);
+    setOpenIds(next);
+    if (activeTab === id) setActiveTab(next[next.length - 1] || null);
     if (next.length === 0) onClose();
   };
 
-  const openTabs = openFiles.map(id => files.find(f=>f.id===id)).filter(Boolean);
+  const openTabs   = openIds.map(id => files.find(f => f.id === id)).filter(Boolean);
   const activeFile = files.find(f => f.id === activeTab);
+  const tree        = buildFileTree(files);
+  const showTree    = files.length > 1;
+  const canPreview  = isPreviewable(files);
 
   if (!activeFile) return null;
 
   return (
-    <div style={{
-      display:"flex", flexDirection:"column", height:"100%",
-      background:"rgba(7,6,16,0.96)",
-      backdropFilter:"var(--blur)", WebkitBackdropFilter:"var(--blur)",
-      borderLeft:"0.5px solid var(--border)",
-      animation:"fadeIn 0.22s var(--ease)",
-    }}>
-      {/* Files in sidebar area */}
-      {files.length > 1 && (
-        <TabStrip
-          files={openTabs}
-          activeId={activeTab}
-          onSelect={setActiveTab}
-          onClose={closeTab}
-        />
-      )}
-
-      {/* No tabs shown if single file — just show header + viewer */}
-      {files.length === 1 && (
-        <div style={{
-          display:"flex", alignItems:"center", gap:8, padding:"10px 16px 8px",
-          borderBottom:"0.5px solid var(--border)", flexShrink:0,
-        }}>
-          <FileI />
-          <span style={{ fontSize:12, color:"var(--text-muted)", fontFamily:"'JetBrains Mono',monospace" }}>
-            File Preview
-          </span>
-          <div style={{ flex:1 }}/>
-          <button onClick={onClose} style={{
-            background:"transparent", border:"none", cursor:"pointer",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            width:26, height:26, borderRadius:6,
-          }}><CloseI/></button>
+    <div className="flex h-full" style={{ background:"#0d0d12" }}>
+      {/* ── File tree sidebar (only for multi-file projects) ── */}
+      {showTree && treeOpen && (
+        <div className="flex-shrink-0" style={{ width:170, borderRight:"1px solid #232330" }}>
+          <div className="flex items-center justify-between px-2.5 py-2" style={{ borderBottom:"1px solid #232330" }}>
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color:"#5a5a7a" }}>Files</span>
+          </div>
+          <FileTree tree={tree} activeId={activeTab} onSelect={(id) => {
+            if (!openIds.includes(id)) setOpenIds(prev => [...prev, id]);
+            setActiveTab(id);
+          }}/>
         </div>
       )}
 
-      <FileViewer file={activeFile} onClose={onClose} />
+      {/* ── Main editor column ── */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-2 py-1.5 flex-shrink-0" style={{ background:"#161620", borderBottom:"1px solid #232330" }}>
+          <div className="flex items-center gap-1">
+            {showTree && (
+              <button onClick={() => setTreeOpen(v => !v)} title="Toggle file tree"
+                className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+                style={{ color: treeOpen ? "#e8301f" : "#6a6a8a" }}
+                onMouseEnter={e => e.currentTarget.style.background="#232330"}
+                onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+                <SidebarI/>
+              </button>
+            )}
+            <span className="text-xs font-mono px-1.5" style={{ color:"#6a6a8a" }}>
+              {langLabel(activeFile.lang)} · {fmtSize(activeFile.size)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Code ↔ Preview toggle */}
+            {canPreview && (
+              <div className="flex rounded-md p-0.5 mr-1" style={{ background:"#0d0d12", border:"1px solid #232330" }}>
+                <button onClick={() => setView("code")}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-[11px] transition-colors"
+                  style={{ background: view==="code" ? "#252533" : "transparent", color: view==="code" ? "white" : "#6a6a8a" }}>
+                  <CodeIco/> Code
+                </button>
+                <button onClick={() => setView("preview")}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-[11px] transition-colors"
+                  style={{ background: view==="preview" ? "#252533" : "transparent", color: view==="preview" ? "white" : "#6a6a8a" }}>
+                  <EyeIco/> Preview
+                </button>
+              </div>
+            )}
+            {view === "code" && (
+              <button onClick={() => setWordWrap(v => !v)} title="Toggle word wrap"
+                className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+                style={{ color: wordWrap ? "#e8301f" : "#6a6a8a" }}
+                onMouseEnter={e => e.currentTarget.style.background="#232330"}
+                onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+                <WrapI/>
+              </button>
+            )}
+            <button onClick={onClose} title="Close panel"
+              className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+              style={{ color:"#6a6a8a" }}
+              onMouseEnter={e => { e.currentTarget.style.background="#232330"; e.currentTarget.style.color="white"; }}
+              onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#6a6a8a"; }}>
+              <CloseI/>
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs (only shown in code view, multi-file) */}
+        {view === "code" && files.length > 1 && (
+          <TabStrip files={openTabs} activeId={activeTab} onSelect={setActiveTab} onClose={closeTab}/>
+        )}
+
+        {/* Body: code or live preview */}
+        {view === "preview" && canPreview
+          ? <LivePreview files={files}/>
+          : <CodeView file={activeFile} wordWrap={wordWrap}/>
+        }
+
+        {/* Export bar */}
+        <ExportBar activeFile={activeFile} files={files}/>
+      </div>
     </div>
   );
 }
