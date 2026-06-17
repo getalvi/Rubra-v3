@@ -1,16 +1,61 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { streamChat } from "../services/api";
 import { uid } from "../utils/parse";
+
+const LS_SESSIONS_KEY = "rubra_sessions";
+const LS_ACTIVE_KEY   = "rubra_active_session";
 
 function makeTitle(text) {
   return text.slice(0, 42).trim() + (text.length > 42 ? "…" : "");
 }
 
+/* ── Load persisted sessions from localStorage (survives browser refresh) ── */
+function loadPersistedSessions() {
+  try {
+    const raw = localStorage.getItem(LS_SESSIONS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Defensive: strip any mid-stream flags left over from a previous tab close
+    return parsed.map(s => ({
+      ...s,
+      messages: (s.messages || []).map(m => ({ ...m, streaming: false })),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function loadPersistedActiveId() {
+  try { return localStorage.getItem(LS_ACTIVE_KEY) || null; } catch { return null; }
+}
+
 export function useChat() {
-  const [sessions,    setSessions]    = useState([]);
-  const [activeId,    setActiveId]    = useState(null);
+  const [sessions,    setSessions]    = useState(loadPersistedSessions);
+  const [activeId,    setActiveId]    = useState(loadPersistedActiveId);
   const [isStreaming, setIsStreaming] = useState(false);
   const abortRef = useRef(null);
+
+  /* ── Persist sessions to localStorage whenever they change ── */
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_SESSIONS_KEY, JSON.stringify(sessions));
+    } catch (e) {
+      // Quota exceeded — drop the oldest sessions and retry once
+      try {
+        const trimmed = [...sessions].sort((a, b) => b.ts - a.ts).slice(0, 20);
+        localStorage.setItem(LS_SESSIONS_KEY, JSON.stringify(trimmed));
+      } catch {}
+    }
+  }, [sessions]);
+
+  /* ── Persist the active session id whenever it changes ── */
+  useEffect(() => {
+    try {
+      if (activeId) localStorage.setItem(LS_ACTIVE_KEY, activeId);
+      else localStorage.removeItem(LS_ACTIVE_KEY);
+    } catch {}
+  }, [activeId]);
 
   const activeSession = sessions.find(s => s.id === activeId) || null;
   const messages      = activeSession?.messages || [];
@@ -63,14 +108,23 @@ export function useChat() {
             ? { ...s, messages: s.messages.map(m => {
                 if (m.id !== asstMid) return m;
                 const steps = [...(m.steps || [])];
-                const last  = steps[steps.length - 1];
-                // collapse consecutive duplicates of the same step type+label
-                if (!last || last.type !== evt.type || last.label !== (evt.text || evt.name || evt.agent)) {
+
+                // Orchestrator plan: a structured sub-task breakdown, rendered as a group
+                if (evt.type === "plan") {
                   steps.push({
-                    type:  evt.type,
-                    label: evt.text || evt.name || evt.agent || evt.intent || "Working…",
-                    done:  evt.type === "tool_result",
+                    type: "plan",
+                    label: `Plan: ${evt.sub_tasks?.length || 0} sub-tasks`,
+                    subTasks: evt.sub_tasks || [],
+                    done: true,
                   });
+                  return { ...m, steps };
+                }
+
+                const last = steps[steps.length - 1];
+                const label = evt.text || evt.name || evt.agent || evt.intent || "Working…";
+                // collapse consecutive duplicates of the same step type+label
+                if (!last || last.type !== evt.type || last.label !== label) {
+                  steps.push({ type: evt.type, label, done: evt.type === "tool_result" });
                 } else if (evt.type === "tool_result") {
                   last.done = true;
                 }

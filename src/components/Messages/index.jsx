@@ -236,9 +236,16 @@ const SpinnerI = () => (
 
 function stepIcon(type, label) {
   const l = (label || "").toLowerCase();
+  if (type === "plan") return <PlanStepI/>;
   if (l.includes("search") || l.includes("web") || l.includes("browse")) return <SearchStepI/>;
   return <ToolStepI/>;
 }
+
+const PlanStepI = () => (
+  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+  </svg>
+);
 
 /* ── Claude-style collapsible step list (e.g. "Searched the web >") ── */
 function StepsList({ steps, streaming }) {
@@ -246,9 +253,12 @@ function StepsList({ steps, streaming }) {
   if (!steps || steps.length === 0) return null;
 
   const allDone = steps.every(s => s.done);
-  const summary = steps.length === 1
-    ? steps[0].label
-    : `Ran ${steps.length} steps`;
+  const planStep = steps.find(s => s.type === "plan");
+  const summary = planStep
+    ? `Orchestrated · ${planStep.subTasks?.length || 0} sub-tasks · ${steps.length} steps`
+    : steps.length === 1
+      ? steps[0].label
+      : `Ran ${steps.length} steps`;
 
   return (
     <div className="mb-3">
@@ -265,10 +275,28 @@ function StepsList({ steps, streaming }) {
       {open && (
         <div className="mt-1.5 pl-1 flex flex-col gap-1.5 border-l" style={{ borderColor:"#1e1e2e", marginLeft:5 }}>
           {steps.map((s, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs pl-3" style={{ color:"#8080a0" }}>
-              <span className="flex-shrink-0" style={{ color:"#5a5a7a" }}>{stepIcon(s.type, s.label)}</span>
-              <span className="flex-1 truncate">{s.label}</span>
-              {s.done ? <CheckI/> : (streaming ? <SpinnerI/> : null)}
+            <div key={i} className="flex flex-col gap-1.5 pl-3">
+              <div className="flex items-center gap-2 text-xs" style={{ color:"#8080a0" }}>
+                <span className="flex-shrink-0" style={{ color:"#5a5a7a" }}>{stepIcon(s.type, s.label)}</span>
+                <span className="flex-1 truncate">{s.label}</span>
+                {s.done ? <CheckI/> : (streaming ? <SpinnerI/> : null)}
+              </div>
+              {/* Orchestrator plan: show the sub-task breakdown as a mini checklist */}
+              {s.type === "plan" && s.subTasks?.length > 0 && (
+                <div className="flex flex-col gap-1 pl-5 mt-0.5">
+                  {s.subTasks.map((t, ti) => (
+                    <div key={t.id || ti} className="flex items-center gap-2 text-[11px]" style={{ color:"#6a6a8a" }}>
+                      <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background:"#3a3a55" }}/>
+                      <span className="truncate">{t.desc || t.description || `Task ${ti + 1}`}</span>
+                      {t.agent && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] flex-shrink-0" style={{ background:"#1a1a2a", color:"#5a5a7a" }}>
+                          {t.agent}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
