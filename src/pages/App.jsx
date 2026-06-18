@@ -168,6 +168,13 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {/* Mobile: file panel as a full-screen overlay (no side-by-side room on small screens) */}
+      {isMobile && fpOpen && fpFiles.length > 0 && (
+        <div className="fixed inset-0 z-[60]" style={{ background:"#0a0a0f" }}>
+          <FilePanel files={fpFiles} onClose={()=>{ setFpOpen(false); setFpFiles([]); }}/>
+        </div>
+      )}
     </div>
   );
 }

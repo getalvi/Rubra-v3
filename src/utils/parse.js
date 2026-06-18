@@ -1,20 +1,73 @@
 /** Parse markdown text into segments: text | code
  *  Also detects an explicit filename if present right before the fence,
  *  e.g. "**App.jsx**" or "`src/App.jsx`" on the line just above ```lang
+ *
+ *  FALLBACK: if the backend forgets to wrap code in ``` fences (this happens —
+ *  some agent responses stream raw HTML/CSS/JS directly as plain text), this
+ *  function detects that case and synthesizes a code segment anyway, so the
+ *  UI never shows a giant wall of raw markup in the chat bubble.
  */
 export function parseSegments(text) {
   if (typeof text !== "string") text = String(text ?? "");
-  const segs = [];
-  const re = /```(\w*)\n?([\s\S]*?)```/g;
-  let last = 0, m;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) segs.push({ type: "text", content: text.slice(last, m.index) });
-    const filename = detectFilenameAbove(text, m.index);
-    segs.push({ type: "code", lang: m[1] || "text", content: m[2] || "", filename });
-    last = m.index + m[0].length;
+
+  // Normal path: explicit ``` fences present
+  if (text.includes("```")) {
+    const segs = [];
+    const re = /```(\w*)\n?([\s\S]*?)```/g;
+    let last = 0, m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) segs.push({ type: "text", content: text.slice(last, m.index) });
+      const filename = detectFilenameAbove(text, m.index);
+      segs.push({ type: "code", lang: m[1] || guessLangFromContent(m[2]), content: m[2] || "", filename });
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) segs.push({ type: "text", content: text.slice(last) });
+    return segs.length ? segs : [{ type: "text", content: text }];
   }
-  if (last < text.length) segs.push({ type: "text", content: text.slice(last) });
-  return segs.length ? segs : [{ type: "text", content: text }];
+
+  // Fallback path: no fences at all — check if this looks like raw code
+  const rawLang = detectUnfencedCode(text);
+  if (rawLang) {
+    return [{ type: "code", lang: rawLang, content: text.trim(), filename: null }];
+  }
+
+  return [{ type: "text", content: text }];
+}
+
+/** Heuristic: does this whole (unfenced) message look like raw source code? */
+function detectUnfencedCode(text) {
+  const t = text.trim();
+  if (t.length < 60) return null; // too short to bother — likely just prose
+
+  const lines = t.split("\n");
+  const sample = lines.slice(0, 40).join("\n");
+
+  // Strong signals first
+  if (/^<!DOCTYPE html/i.test(t) || /<html[\s>]/i.test(sample)) return "html";
+  if (/^\s*<[a-z!][\s\S]*>[\s\S]*<\/[a-z]+>\s*$/i.test(t) && /<(div|section|header|footer|nav|body|head|style|script)/i.test(sample)) return "html";
+
+  // CSS: lots of "selector { prop: value; }" lines
+  const cssLineRatio = lines.filter(l => /^[.#]?[\w-]+(\s*[,>]\s*[.#]?[\w-]+)*\s*\{$|^\s*[\w-]+\s*:\s*.+;\s*$|^\s*\}\s*$/.test(l)).length / Math.max(lines.length, 1);
+  if (cssLineRatio > 0.5) return "css";
+
+  // JS/TS: common keyword density
+  if (/^\s*(import .* from|export (default|const|function|class)|const \w+ = |function \w*\(|class \w+|=>\s*\{)/m.test(sample)) {
+    return /:\s*(string|number|boolean|void|any)\b/.test(sample) ? "typescript" : "javascript";
+  }
+
+  // Python
+  if (/^\s*(import |from .* import|def \w+\(|class \w+:)/m.test(sample)) return "python";
+
+  // JSON
+  if ((t.startsWith("{") && t.endsWith("}")) || (t.startsWith("[") && t.endsWith("]"))) {
+    try { JSON.parse(t); return "json"; } catch {}
+  }
+
+  return null;
+}
+
+function guessLangFromContent(code) {
+  return detectUnfencedCode(code) || "text";
 }
 
 /** Look at the text immediately preceding a code fence for a filename hint */

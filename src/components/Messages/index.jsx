@@ -59,6 +59,74 @@ function TextBlock({ text }) {
 }
 
 /* ── Code block ── */
+const extOf = (lang) => ({javascript:"js",typescript:"ts",python:"py",html:"html",css:"css",json:"json",bash:"sh",sql:"sql",rust:"rs",go:"go",java:"java",cpp:"cpp",c:"c"}[lang?.toLowerCase()]||"txt");
+
+/* ── Compact file card — shown for long code instead of dumping it inline ── */
+function FileCard({ seg, onOpenPanel, onExplain }) {
+  const [copied, setCopied] = useState(false);
+  const lines = seg.content.split("\n").length;
+  const dot   = langColor(seg.lang);
+  const name  = seg.filename || `code.${extOf(seg.lang)}`;
+
+  const copy = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(seg.content);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  };
+  const download = (e) => {
+    e.stopPropagation();
+    const url = URL.createObjectURL(new Blob([seg.content]));
+    Object.assign(document.createElement("a"), { href:url, download:name }).click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div
+      onClick={() => onOpenPanel?.(seg)}
+      className="my-3 rounded-xl overflow-hidden cursor-pointer transition-colors"
+      style={{ background:"#111118", border:"1px solid #1e1e2e" }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = "#2e2e4a"}
+      onMouseLeave={e => e.currentTarget.style.borderColor = "#1e1e2e"}
+    >
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background:"#1a1a2a" }}>
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background:dot }}/>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium font-mono truncate" style={{ color:"#e8e8f0" }}>{name}</div>
+          <div className="text-xs" style={{ color:"#5a5a7a" }}>{lines} lines · {fmtSize(new Blob([seg.content]).size)}</div>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {onExplain && (
+            <button onClick={e => { e.stopPropagation(); onExplain(seg); }} title="Explain"
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+              style={{ color:"#5a5a7a" }}
+              onMouseEnter={e=>{e.currentTarget.style.background="#1a1a2a";e.currentTarget.style.color="#a0a0c0";}}
+              onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#5a5a7a";}}>
+              <ExplainI/>
+            </button>
+          )}
+          <button onClick={download} title="Download"
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            style={{ color:"#5a5a7a" }}
+            onMouseEnter={e=>{e.currentTarget.style.background="#1a1a2a";e.currentTarget.style.color="#a0a0c0";}}
+            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#5a5a7a";}}>
+            <DownI/>
+          </button>
+          <button onClick={copy} title={copied?"Copied":"Copy"}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            style={{ color: copied ? "#22c55e" : "#5a5a7a" }}
+            onMouseEnter={e=>{ if(!copied) e.currentTarget.style.background="#1a1a2a"; }}
+            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <CopyI ok={copied}/>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Code block (inline, for short snippets only) ── */
 function CodeBlock({ seg, onOpenPanel, onExplain }) {
   const [copied, setCopied] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -70,9 +138,8 @@ function CodeBlock({ seg, onOpenPanel, onExplain }) {
     setCopied(true); setTimeout(() => setCopied(false), 2000);
   };
   const download = () => {
-    const ext = {javascript:"js",typescript:"ts",python:"py",html:"html",css:"css",json:"json",bash:"sh",sql:"sql",rust:"rs",go:"go",java:"java",cpp:"cpp",c:"c"}[seg.lang?.toLowerCase()]||"txt";
     const url = URL.createObjectURL(new Blob([seg.content]));
-    Object.assign(document.createElement("a"), { href:url, download:`code.${ext}` }).click();
+    Object.assign(document.createElement("a"), { href:url, download:`code.${extOf(seg.lang)}` }).click();
     URL.revokeObjectURL(url);
   };
 
@@ -89,9 +156,7 @@ function CodeBlock({ seg, onOpenPanel, onExplain }) {
           {onExplain && (
             <Btn onClick={() => onExplain(seg)} label="Explain"><ExplainI/></Btn>
           )}
-          {lines > 25 && (
-            <Btn onClick={() => onOpenPanel?.(seg)} label="Panel"><ExpI/></Btn>
-          )}
+          <Btn onClick={() => onOpenPanel?.(seg)} label="Panel"><ExpI/></Btn>
           <Btn onClick={download} label="Download"><DownI/></Btn>
           <Btn onClick={copy} label={copied?"Copied":"Copy"}>
             <span style={{ color: copied ? "#22c55e" : "currentColor" }}><CopyI ok={copied}/></span>
@@ -306,12 +371,27 @@ function StepsList({ steps, streaming }) {
 }
 
 /* ── Message content ── */
-function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onExplain }) {
+const LONG_CODE_THRESHOLD = 25;
+
+function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onExplain, autoOpenedRef }) {
   const [present, setPresent] = useState(false);
   const safe = typeof content === "string" ? content : String(content ?? "");
   const segs  = parseSegments(safe);
   const codeCount = segs.filter(s => s.type === "code").length;
   const hasCode = codeCount > 0;
+
+  /* Auto-open the file panel the moment a long code response finishes streaming,
+     so the user never has to scroll past a wall of code or hunt for a tiny button. */
+  useEffect(() => {
+    if (streaming) return;
+    if (!autoOpenedRef || autoOpenedRef.current) return;
+    const longCode = segs.find(s => s.type === "code" && s.content.split("\n").length > LONG_CODE_THRESHOLD);
+    if (longCode) {
+      autoOpenedRef.current = true;
+      onOpenPanel?.(longCode);
+    }
+  }, [streaming]); // eslint-disable-line
+
   return (
     <div className="text-sm leading-relaxed" style={{ color:"#b0b0c8" }}>
       <StepsList steps={steps} streaming={streaming}/>
@@ -335,10 +415,13 @@ function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onE
       )}
       {present
         ? <PresentView segs={segs}/>
-        : segs.map((s,i) => s.type==="code"
-            ? <CodeBlock key={i} seg={s} onOpenPanel={onOpenPanel} onExplain={onExplain}/>
-            : <TextBlock key={i} text={s.content}/>
-          )
+        : segs.map((s,i) => {
+            if (s.type !== "code") return <TextBlock key={i} text={s.content}/>;
+            const isLong = s.content.split("\n").length > LONG_CODE_THRESHOLD;
+            return isLong
+              ? <FileCard key={i} seg={s} onOpenPanel={onOpenPanel} onExplain={onExplain}/>
+              : <CodeBlock key={i} seg={s} onOpenPanel={onOpenPanel} onExplain={onExplain}/>;
+          })
       }
       {streaming && <Cursor/>}
     </div>
@@ -349,11 +432,17 @@ function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onE
 export default function MessageList({ messages, onEditMessage, onRetry, onOpenFilePanel, onOpenProject, onAskFollowUp, isStreaming }) {
   const botRef = useRef(null);
   const [editing, setEditing] = useState(null);
+  const autoOpenMap = useRef({}); // msgId -> { current: bool } — ensures each message auto-opens its panel at most once
 
   useEffect(() => { botRef.current?.scrollIntoView({ behavior:"smooth", block:"end" }); }, [messages]);
 
   const saveEdit = (v) => { onEditMessage?.(editing.id, v); setEditing(null); };
   const isLastMsg = (idx) => idx === messages.length - 1;
+
+  const getAutoOpenRef = (msgId) => {
+    if (!autoOpenMap.current[msgId]) autoOpenMap.current[msgId] = { current: false };
+    return autoOpenMap.current[msgId];
+  };
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-5 max-w-3xl w-full mx-auto" style={{ boxSizing:"border-box" }}>
@@ -385,7 +474,8 @@ export default function MessageList({ messages, onEditMessage, onRetry, onOpenFi
                   </div>
                 )}
                 <MsgContent content={msg.content} streaming={msg.streaming} steps={msg.steps}
-                  onOpenPanel={seg=>onOpenFilePanel?.({lang:seg.lang,content:seg.content})}
+                  autoOpenedRef={getAutoOpenRef(msg.id)}
+                  onOpenPanel={seg=>onOpenFilePanel?.({lang:seg.lang,content:seg.content,filename:seg.filename})}
                   onOpenProject={()=>onOpenProject?.(msg)}
                   onExplain={seg=>onAskFollowUp?.(`Explain this ${seg.lang||""} code:\n\n\`\`\`${seg.lang||""}\n${seg.content}\n\`\`\``)}
                 />
