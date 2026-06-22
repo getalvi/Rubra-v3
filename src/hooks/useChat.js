@@ -120,7 +120,29 @@ export function useChat() {
                   return { ...m, steps };
                 }
 
-                const last = steps[steps.length - 1];
+                // File generation failure — show as a warning step
+                if (evt.type === "file_failed") {
+                  steps.push({
+                    type: "file_failed",
+                    label: `Failed: ${evt.path || "unknown file"}`,
+                    error: evt.error || "Generation failed",
+                    done: true,
+                    failed: true,
+                  });
+                  return { ...m, steps };
+                }
+
+                // Project complete — store succeeded/failed file lists on the message
+                if (evt.type === "project_complete") {
+                  return {
+                    ...m, steps,
+                    projectFiles:       evt.files        || [],
+                    projectFailedFiles: evt.failed_files || [],
+                    projectFramework:   evt.framework    || "",
+                  };
+                }
+
+                const last  = steps[steps.length - 1];
                 const label = evt.text || evt.name || evt.agent || evt.intent || "Working…";
                 // collapse consecutive duplicates of the same step type+label
                 if (!last || last.type !== evt.type || last.label !== label) {

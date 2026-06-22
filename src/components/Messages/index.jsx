@@ -301,10 +301,17 @@ const SpinnerI = () => (
 
 function stepIcon(type, label) {
   const l = (label || "").toLowerCase();
-  if (type === "plan") return <PlanStepI/>;
+  if (type === "plan")        return <PlanStepI/>;
+  if (type === "file_failed") return <WarnI/>;
   if (l.includes("search") || l.includes("web") || l.includes("browse")) return <SearchStepI/>;
   return <ToolStepI/>;
 }
+
+const WarnI = () => (
+  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/>
+  </svg>
+);
 
 const PlanStepI = () => (
   <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -317,8 +324,9 @@ function StepsList({ steps, streaming }) {
   const [open, setOpen] = useState(false);
   if (!steps || steps.length === 0) return null;
 
-  const allDone = steps.every(s => s.done);
-  const planStep = steps.find(s => s.type === "plan");
+  const allDone    = steps.every(s => s.done);
+  const planStep   = steps.find(s => s.type === "plan");
+  const failedSteps = steps.filter(s => s.type === "file_failed");
   const summary = planStep
     ? `Orchestrated · ${planStep.subTasks?.length || 0} sub-tasks · ${steps.length} steps`
     : steps.length === 1
@@ -329,11 +337,16 @@ function StepsList({ steps, streaming }) {
     <div className="mb-3">
       <button onClick={() => setOpen(v => !v)}
         className="flex items-center gap-1.5 text-xs transition-colors"
-        style={{ color:"#6a6a8a" }}
-        onMouseEnter={e => e.currentTarget.style.color = "#9090b0"}
-        onMouseLeave={e => e.currentTarget.style.color = "#6a6a8a"}>
+        style={{ color: failedSteps.length > 0 ? "#f87171" : "#6a6a8a" }}
+        onMouseEnter={e => e.currentTarget.style.color = failedSteps.length > 0 ? "#fca5a5" : "#9090b0"}
+        onMouseLeave={e => e.currentTarget.style.color = failedSteps.length > 0 ? "#f87171" : "#6a6a8a"}>
         <ChevronI open={open}/>
         <span>{summary}</span>
+        {failedSteps.length > 0 && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ background:"rgba(248,113,113,0.12)", color:"#f87171" }}>
+            {failedSteps.length} failed
+          </span>
+        )}
         {streaming && !allDone && <SpinnerI/>}
       </button>
 
@@ -341,10 +354,18 @@ function StepsList({ steps, streaming }) {
         <div className="mt-1.5 pl-1 flex flex-col gap-1.5 border-l" style={{ borderColor:"#1e1e2e", marginLeft:5 }}>
           {steps.map((s, i) => (
             <div key={i} className="flex flex-col gap-1.5 pl-3">
-              <div className="flex items-center gap-2 text-xs" style={{ color:"#8080a0" }}>
-                <span className="flex-shrink-0" style={{ color:"#5a5a7a" }}>{stepIcon(s.type, s.label)}</span>
+              <div className="flex items-center gap-2 text-xs"
+                style={{ color: s.failed ? "#f87171" : "#8080a0" }}>
+                <span className="flex-shrink-0">{stepIcon(s.type, s.label)}</span>
                 <span className="flex-1 truncate">{s.label}</span>
-                {s.done ? <CheckI/> : (streaming ? <SpinnerI/> : null)}
+                {/* Failed step: show the error message on hover via title, no retry button
+                    (backend already tells the user "Say 'retry'" in plain text per the .md doc) */}
+                {s.failed
+                  ? <span title={s.error} style={{ color:"#f87171", fontSize:10, cursor:"help" }}>⚠</span>
+                  : s.done
+                    ? <CheckI/>
+                    : (streaming ? <SpinnerI/> : null)
+                }
               </div>
               {/* Orchestrator plan: show the sub-task breakdown as a mini checklist */}
               {s.type === "plan" && s.subTasks?.length > 0 && (

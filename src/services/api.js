@@ -38,7 +38,12 @@ export async function streamChat({ message, sessionId, mode="auto", onToken, onS
             const chunk = evt.content ?? "";
             if (chunk) { fullText += chunk; onToken?.(chunk, fullText); }
           }
-          else if (evt.type === "tool_call" || evt.type === "tool_result" || evt.type === "status" || evt.type === "meta" || evt.type === "plan") {
+          else if (
+            evt.type === "tool_call" || evt.type === "tool_result" ||
+            evt.type === "status"    || evt.type === "meta"          ||
+            evt.type === "plan"      || evt.type === "file_failed"   ||
+            evt.type === "project_complete"
+          ) {
             onStep?.(evt);
           }
           else if (evt.type === "error") throw new Error(evt.message || "Stream error");
