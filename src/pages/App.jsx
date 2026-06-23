@@ -4,6 +4,7 @@ import Sidebar        from "../components/Sidebar/index.jsx";
 import Welcome        from "../components/Welcome/index.jsx";
 import MessageList    from "../components/Messages/index.jsx";
 import ChatInput      from "../components/ChatInput/index.jsx";
+import { ThinkingIndicator } from "../components/AgentSteps/index.jsx";
 import FilePanel      from "../components/FilePanel/index.jsx";
 import AuthModal      from "../components/AuthModal";
 import { useChat }    from "../hooks/useChat";
@@ -155,6 +156,16 @@ export default function App() {
               ? <Welcome isMobile={isMobile} displayName={user ? displayName : ""}/>
               : <MessageList messages={messages} onEditMessage={editMessage} onRetry={retryMessage} onOpenFilePanel={openFP} onOpenProject={openProjectFP} onAskFollowUp={sendMessage} isStreaming={isStreaming}/>
             }
+            {/* thinking state indicator above input */}
+            {isStreaming && (() => {
+              const lastMsg = messages[messages.length - 1];
+              const noTokensYet = lastMsg?.role === "assistant" && !lastMsg?.content?.trim() && (!lastMsg?.steps || lastMsg.steps.length === 0);
+              return noTokensYet ? (
+                <div className="px-6 pb-1 max-w-3xl w-full mx-auto">
+                  <ThinkingIndicator/>
+                </div>
+              ) : null;
+            })()}
             <ChatInput onSend={sendMessage} onStop={stopGeneration} isStreaming={isStreaming} disabled={!user}/>
           </div>
 

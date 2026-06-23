@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { parseSegments, langColor, fmtSize } from "../../utils/parse";
+import AgentSteps from "../AgentSteps/index.jsx";
 
 /* ── Icons ── */
 const Ico = ({ d, s=14 }) => (
@@ -273,123 +274,6 @@ function ActionRow({ msg, onEdit, onRetry, onCopy }) {
 }
 
 /* ── Step icons ── */
-const SearchStepI = () => (
-  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-  </svg>
-);
-const ToolStepI = () => (
-  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.77z"/>
-  </svg>
-);
-const ChevronI = ({ open }) => (
-  <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"
-    style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)", transition:"transform .15s" }}>
-    <path d="M9 6l6 6-6 6"/>
-  </svg>
-);
-const CheckI = () => (
-  <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 6L9 17l-5-5"/>
-  </svg>
-);
-const SpinnerI = () => (
-  <span className="inline-block w-2.5 h-2.5 rounded-full border-2 flex-shrink-0"
-    style={{ borderColor:"#3a3a55", borderTopColor:"#e8301f", animation:"spin .6s linear infinite" }}/>
-);
-
-function stepIcon(type, label) {
-  const l = (label || "").toLowerCase();
-  if (type === "plan")        return <PlanStepI/>;
-  if (type === "file_failed") return <WarnI/>;
-  if (l.includes("search") || l.includes("web") || l.includes("browse")) return <SearchStepI/>;
-  return <ToolStepI/>;
-}
-
-const WarnI = () => (
-  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/>
-  </svg>
-);
-
-const PlanStepI = () => (
-  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-  </svg>
-);
-
-/* ── Claude-style collapsible step list (e.g. "Searched the web >") ── */
-function StepsList({ steps, streaming }) {
-  const [open, setOpen] = useState(false);
-  if (!steps || steps.length === 0) return null;
-
-  const allDone    = steps.every(s => s.done);
-  const planStep   = steps.find(s => s.type === "plan");
-  const failedSteps = steps.filter(s => s.type === "file_failed");
-  const summary = planStep
-    ? `Orchestrated · ${planStep.subTasks?.length || 0} sub-tasks · ${steps.length} steps`
-    : steps.length === 1
-      ? steps[0].label
-      : `Ran ${steps.length} steps`;
-
-  return (
-    <div className="mb-3">
-      <button onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 text-xs transition-colors"
-        style={{ color: failedSteps.length > 0 ? "#f87171" : "#6a6a8a" }}
-        onMouseEnter={e => e.currentTarget.style.color = failedSteps.length > 0 ? "#fca5a5" : "#9090b0"}
-        onMouseLeave={e => e.currentTarget.style.color = failedSteps.length > 0 ? "#f87171" : "#6a6a8a"}>
-        <ChevronI open={open}/>
-        <span>{summary}</span>
-        {failedSteps.length > 0 && (
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ background:"rgba(248,113,113,0.12)", color:"#f87171" }}>
-            {failedSteps.length} failed
-          </span>
-        )}
-        {streaming && !allDone && <SpinnerI/>}
-      </button>
-
-      {open && (
-        <div className="mt-1.5 pl-1 flex flex-col gap-1.5 border-l" style={{ borderColor:"#1e1e2e", marginLeft:5 }}>
-          {steps.map((s, i) => (
-            <div key={i} className="flex flex-col gap-1.5 pl-3">
-              <div className="flex items-center gap-2 text-xs"
-                style={{ color: s.failed ? "#f87171" : "#8080a0" }}>
-                <span className="flex-shrink-0">{stepIcon(s.type, s.label)}</span>
-                <span className="flex-1 truncate">{s.label}</span>
-                {/* Failed step: show the error message on hover via title, no retry button
-                    (backend already tells the user "Say 'retry'" in plain text per the .md doc) */}
-                {s.failed
-                  ? <span title={s.error} style={{ color:"#f87171", fontSize:10, cursor:"help" }}>⚠</span>
-                  : s.done
-                    ? <CheckI/>
-                    : (streaming ? <SpinnerI/> : null)
-                }
-              </div>
-              {/* Orchestrator plan: show the sub-task breakdown as a mini checklist */}
-              {s.type === "plan" && s.subTasks?.length > 0 && (
-                <div className="flex flex-col gap-1 pl-5 mt-0.5">
-                  {s.subTasks.map((t, ti) => (
-                    <div key={t.id || ti} className="flex items-center gap-2 text-[11px]" style={{ color:"#6a6a8a" }}>
-                      <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background:"#3a3a55" }}/>
-                      <span className="truncate">{t.desc || t.description || `Task ${ti + 1}`}</span>
-                      {t.agent && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] flex-shrink-0" style={{ background:"#1a1a2a", color:"#5a5a7a" }}>
-                          {t.agent}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ── Message content ── */
 const LONG_CODE_THRESHOLD = 25;
@@ -415,7 +299,7 @@ function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onE
 
   return (
     <div className="text-sm leading-relaxed" style={{ color:"#b0b0c8" }}>
-      <StepsList steps={steps} streaming={streaming}/>
+      <AgentSteps steps={steps} streaming={streaming} hasTokens={!!content?.trim()}/>
       {!streaming && hasCode && (
         <div className="mb-3 flex items-center gap-2 flex-wrap">
           <button onClick={()=>setPresent(v=>!v)}

@@ -144,11 +144,25 @@ export function useChat() {
 
                 const last  = steps[steps.length - 1];
                 const label = evt.text || evt.name || evt.agent || evt.intent || "Working…";
-                // collapse consecutive duplicates of the same step type+label
+
+                // Extract file diff info if present (e.g. { files: [{name:"main.py", added:77, removed:7}] })
+                const files = evt.files || (evt.path ? [{ name: evt.path, added: evt.added||0, removed: evt.removed||0 }] : []);
+                // Terminal output from script/compile events
+                const output = evt.output || evt.stdout || null;
+
                 if (!last || last.type !== evt.type || last.label !== label) {
-                  steps.push({ type: evt.type, label, done: evt.type === "tool_result" });
-                } else if (evt.type === "tool_result") {
-                  last.done = true;
+                  steps.push({
+                    type:   evt.type,
+                    label,
+                    done:   evt.type === "tool_result",
+                    files:  files.length > 0 ? files : undefined,
+                    output: output || undefined,
+                  });
+                } else {
+                  // Update existing step: add output, mark done, append file badges
+                  if (evt.type === "tool_result") last.done = true;
+                  if (output && !last.output) last.output = output;
+                  if (files.length > 0) last.files = [...(last.files||[]), ...files];
                 }
                 return { ...m, steps };
               })}
