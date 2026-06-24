@@ -48,7 +48,40 @@ export default function App() {
   const [fpFiles,   setFpFiles]   = useState([]);
   const [fpOpen,    setFpOpen]    = useState(false);
 
-  const { sessions, activeId, messages, isStreaming, sendMessage, newChat, selectSession, deleteSession, editMessage, retryMessage, renameSession, stopGeneration } = useChat();
+  const { sessions, activeId, messages, isStreaming, lastProject, streamStatus, sendMessage, newChat, selectSession, deleteSession, editMessage, retryMessage, renameSession, stopGeneration } = useChat();
+
+  /* ── Auto-open FilePanel whenever a project_complete arrives (first build OR follow-up) ── */
+  useEffect(() => {
+    if (!lastProject) return;
+    const { files, failedFiles, framework } = lastProject;
+    if (!files?.length) return;
+
+    // Convert backend file objects → FilePanel's expected shape
+    const ext = { html:"html", react:"jsx", vue:"vue", css:"css", js:"js" };
+    const panelFiles = files.map(f => ({
+      id:      f.path,
+      name:    f.path.split("/").pop(),
+      path:    f.path,
+      lang:    f.path.split(".").pop() || "text",
+      content: f.content || "",
+      size:    new Blob([f.content || ""]).size,
+    }));
+
+    // Add failed files too (so they appear in the tree with error state)
+    for (const ff of (failedFiles || [])) {
+      if (!panelFiles.find(f => f.path === ff.path)) {
+        panelFiles.push({
+          id: ff.path, name: ff.path.split("/").pop(),
+          path: ff.path, lang: ff.path.split(".").pop() || "text",
+          content: `// ⚠️ Generation failed: ${ff.error || "unknown error"}`,
+          size: 0, failed: true,
+        });
+      }
+    }
+
+    setFpFiles(panelFiles);
+    setFpOpen(true);
+  }, [lastProject]);
 
   useEffect(() => {
     const chk = () => setIsMobile(window.innerWidth < 768);
@@ -156,16 +189,23 @@ export default function App() {
               ? <Welcome isMobile={isMobile} displayName={user ? displayName : ""}/>
               : <MessageList messages={messages} onEditMessage={editMessage} onRetry={retryMessage} onOpenFilePanel={openFP} onOpenProject={openProjectFP} onAskFollowUp={sendMessage} isStreaming={isStreaming}/>
             }
-            {/* thinking state indicator above input */}
-            {isStreaming && (() => {
-              const lastMsg = messages[messages.length - 1];
-              const noTokensYet = lastMsg?.role === "assistant" && !lastMsg?.content?.trim() && (!lastMsg?.steps || lastMsg.steps.length === 0);
-              return noTokensYet ? (
-                <div className="px-6 pb-1 max-w-3xl w-full mx-auto">
-                  <ThinkingIndicator/>
-                </div>
-              ) : null;
-            })()}
+            {/* transient status / thinking indicator above input */}
+            {isStreaming && (
+              <div className="px-6 pb-1 max-w-3xl w-full mx-auto">
+                {streamStatus ? (
+                  <div className="flex items-center gap-2 text-xs" style={{ color:"#5a5a7a" }}>
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ background:"#e8301f", animation:"pulseDot 1s ease-in-out infinite" }}/>
+                    {streamStatus}
+                  </div>
+                ) : (() => {
+                  const lastMsg = messages[messages.length - 1];
+                  const noTokens = lastMsg?.role==="assistant" && !lastMsg?.content?.trim() && (!lastMsg?.steps?.length);
+                  return noTokens ? <ThinkingIndicator/> : null;
+                })()}
+              </div>
+            )}
+            <style>{`@keyframes pulseDot{0%,100%{opacity:.3}50%{opacity:1}}`}</style>
             <ChatInput onSend={sendMessage} onStop={stopGeneration} isStreaming={isStreaming} disabled={!user}/>
           </div>
 

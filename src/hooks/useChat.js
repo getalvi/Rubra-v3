@@ -33,7 +33,9 @@ function loadPersistedActiveId() {
 export function useChat() {
   const [sessions,    setSessions]    = useState(loadPersistedSessions);
   const [activeId,    setActiveId]    = useState(loadPersistedActiveId);
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [isStreaming,  setIsStreaming]  = useState(false);
+  const [lastProject,  setLastProject]  = useState(null);
+  const [streamStatus, setStreamStatus] = useState("");
   const abortRef = useRef(null);
 
   /* ── Persist sessions to localStorage whenever they change ── */
@@ -102,14 +104,21 @@ export function useChat() {
             : s
         ));
       },
-      onStep: (evt) => {
+      /* ── project_complete fires this immediately so App.jsx can open the panel ── */
+      onProject: (evt) => {
+        const files       = evt.files        || [];
+        const failedFiles = evt.failed_files || [];
+        const framework   = evt.framework    || "html";
+        setLastProject({ files, failedFiles, framework, ts: Date.now() });
+      },      onStep: (evt) => {
+        // Forward transient status text — cleared when streaming ends
+        if (evt.type === "status" && evt.text) setStreamStatus(evt.text);
         setSessions(prev => prev.map(s =>
           s.id === sid
             ? { ...s, messages: s.messages.map(m => {
                 if (m.id !== asstMid) return m;
                 const steps = [...(m.steps || [])];
 
-                // Orchestrator plan: a structured sub-task breakdown, rendered as a group
                 if (evt.type === "plan") {
                   steps.push({
                     type: "plan",
@@ -120,22 +129,55 @@ export function useChat() {
                   return { ...m, steps };
                 }
 
-                // File generation failure — show as a warning step
-                if (evt.type === "file_failed") {
-                  steps.push({
-                    type: "file_failed",
-                    label: `Failed: ${evt.path || "unknown file"}`,
-                    error: evt.error || "Generation failed",
-                    done: true,
-                    failed: true,
+                /* ── file_done: accumulate files path-keyed (order-safe) ── */
+                if (evt.type === "file_done") {
+                  const existingFiles = { ...(m.projectFilesByPath || {}) };
+                  existingFiles[evt.path] = {
+                    path:    evt.path,
+                    content: evt.content ?? existingFiles[evt.path]?.content ?? "",
+                    static:  !!evt.static,
+                    failed:  false,
+                  };
+                  // Also add a step entry so it shows in the step list
+                  const label = `${evt.static ? "Added" : "Generated"}: ${evt.path}`;
+                  steps.push({ type:"file_done", label, done:true,
+                    files:[{ name:evt.path, added: evt.content ? evt.content.split("\n").length : 0, removed:0 }]
                   });
-                  return { ...m, steps };
+                  return { ...m, steps, projectFilesByPath: existingFiles };
                 }
 
-                // Project complete — store succeeded/failed file lists on the message
+                /* ── file_failed ── */
+                if (evt.type === "file_failed") {
+                  const existingFiles = { ...(m.projectFilesByPath || {}) };
+                  existingFiles[evt.path] = {
+                    path:    evt.path,
+                    content: existingFiles[evt.path]?.content ?? "",
+                    failed:  true,
+                    error:   evt.error,
+                  };
+                  steps.push({
+                    type:"file_failed", label:`Failed: ${evt.path || "unknown file"}`,
+                    error: evt.error || "Generation failed", done:true, failed:true,
+                  });
+                  return { ...m, steps, projectFilesByPath: existingFiles };
+                }
+
+                /* ── project_complete: authoritative final file list ── */
                 if (evt.type === "project_complete") {
+                  const byPath = {};
+                  for (const f of (evt.files || [])) byPath[f.path] = { ...f, failed:false };
+                  for (const f of (evt.failed_files || [])) {
+                    byPath[f.path] = { ...(byPath[f.path] || { path:f.path }), failed:true, error:f.error };
+                  }
+                  steps.push({
+                    type:"project_complete",
+                    label: `Project ready — ${(evt.files||[]).length} file${(evt.files||[]).length!==1?"s":""}`,
+                    done:true,
+                    files:(evt.files||[]).map(f=>({ name:f.path, added:f.content?.split("\n").length||0, removed:0 })),
+                  });
                   return {
                     ...m, steps,
+                    projectFilesByPath: byPath,
                     projectFiles:       evt.files        || [],
                     projectFailedFiles: evt.failed_files || [],
                     projectFramework:   evt.framework    || "",
@@ -178,6 +220,7 @@ export function useChat() {
             : s
         ));
         setIsStreaming(false);
+        setStreamStatus("");
         abortRef.current = null;
       },
       onError: (err) => {
@@ -189,6 +232,7 @@ export function useChat() {
             : s
         ));
         setIsStreaming(false);
+        setStreamStatus("");
         abortRef.current = null;
       },
     });
@@ -238,7 +282,7 @@ export function useChat() {
   }, []);
 
   return {
-    sessions, activeId, messages, isStreaming,
+    sessions, activeId, messages, isStreaming, lastProject, streamStatus,
     sendMessage, newChat, selectSession, deleteSession,
     editMessage, retryMessage, renameSession, stopGeneration,
   };

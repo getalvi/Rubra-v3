@@ -1,6 +1,6 @@
 const BASE = "https://getalvi-rubra-v3.hf.space";
 
-export async function streamChat({ message, sessionId, mode="auto", onToken, onStep, onDone, onError, signal }) {
+export async function streamChat({ message, sessionId, mode="auto", onToken, onStep, onProject, onDone, onError, signal }) {
   let fullText = "";
   try {
     const res = await fetch(`${BASE}/api/chat/stream`, {
@@ -39,12 +39,14 @@ export async function streamChat({ message, sessionId, mode="auto", onToken, onS
             if (chunk) { fullText += chunk; onToken?.(chunk, fullText); }
           }
           else if (
-            evt.type === "tool_call" || evt.type === "tool_result" ||
-            evt.type === "status"    || evt.type === "meta"          ||
-            evt.type === "plan"      || evt.type === "file_failed"   ||
-            evt.type === "project_complete"
+            evt.type === "tool_call"       || evt.type === "tool_result" ||
+            evt.type === "status"          || evt.type === "meta"          ||
+            evt.type === "plan"            || evt.type === "file_failed"   ||
+            evt.type === "file_done"       || evt.type === "project_complete"
           ) {
             onStep?.(evt);
+            // Fire dedicated callback so App.jsx can open the file panel immediately
+            if (evt.type === "project_complete") onProject?.(evt);
           }
           else if (evt.type === "error") throw new Error(evt.message || "Stream error");
         } catch {}
