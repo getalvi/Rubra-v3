@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { parseSegments, langColor, fmtSize } from "../../utils/parse";
 import AgentSteps from "../AgentSteps/index.jsx";
+import ProjectFileCards from "../ProjectCards/index.jsx";
 
 /* ── Icons ── */
 const Ico = ({ d, s=14 }) => (
@@ -278,7 +279,7 @@ function ActionRow({ msg, onEdit, onRetry, onCopy }) {
 /* ── Message content ── */
 const LONG_CODE_THRESHOLD = 25;
 
-function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onExplain, autoOpenedRef }) {
+function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onExplain, autoOpenedRef, projectFiles, projectFailedFiles, projectFramework }) {
   const [present, setPresent] = useState(false);
   const safe = typeof content === "string" ? content : String(content ?? "");
   const segs  = parseSegments(safe);
@@ -329,6 +330,14 @@ function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onE
           })
       }
       {streaming && <Cursor/>}
+
+      {/* ── Claude-style file cards — shown when project_complete fires ── */}
+      <ProjectFileCards
+        files={projectFiles}
+        failedFiles={projectFailedFiles}
+        framework={projectFramework}
+        streaming={streaming}
+      />
     </div>
   );
 }
@@ -383,6 +392,9 @@ export default function MessageList({ messages, onEditMessage, onRetry, onOpenFi
                   onOpenPanel={seg=>onOpenFilePanel?.({lang:seg.lang,content:seg.content,filename:seg.filename})}
                   onOpenProject={()=>onOpenProject?.(msg)}
                   onExplain={seg=>onAskFollowUp?.(`Explain this ${seg.lang||""} code:\n\n\`\`\`${seg.lang||""}\n${seg.content}\n\`\`\``)}
+                  projectFiles={msg.projectFiles}
+                  projectFailedFiles={msg.projectFailedFiles}
+                  projectFramework={msg.projectFramework}
                 />
               </div>
               {!msg.streaming && (
