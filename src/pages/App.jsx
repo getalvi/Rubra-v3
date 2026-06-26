@@ -136,6 +136,7 @@ export default function App() {
         height: "100dvh",
         background: "#0a0a0f",
         display: isMobile ? "flex" : "grid",
+        flexDirection: isMobile ? "column" : undefined,
         gridTemplateColumns: isMobile ? undefined : (!user ? "1fr" : (panelOpen ? "260px 1fr" : "60px 1fr")),
         transition: isMobile ? undefined : "grid-template-columns 0.3s ease",
       }}
@@ -222,8 +223,16 @@ export default function App() {
           {showFP && (
             <>
               <div className="flex-shrink-0 w-px" style={{ background:"#1a1a2a" }}/>
-              <div className="flex-shrink-0 h-full overflow-hidden"
-                style={{ width: fpExpanded ? "55vw" : 400, transition:"width 0.2s ease", minWidth: fpExpanded ? 500 : 320 }}>
+              {/* Panel width: normal 420px, expanded ~55% of screen */}
+              <div
+                className="flex-shrink-0 h-full overflow-hidden"
+                style={{
+                  width: fpExpanded ? "55vw" : 420,
+                  minWidth: fpExpanded ? 480 : 280,
+                  maxWidth: fpExpanded ? "75vw" : 560,
+                  transition: "width 0.22s ease, min-width 0.22s ease",
+                }}
+              >
                 <FilePanel
                   files={fpFiles}
                   expanded={fpExpanded}
@@ -236,10 +245,15 @@ export default function App() {
         </div>
       </div>
 
-      {/* Mobile: file panel as a full-screen overlay (no side-by-side room on small screens) */}
+      {/* Mobile: file panel as a full-screen overlay */}
       {isMobile && fpOpen && fpFiles.length > 0 && (
         <div className="fixed inset-0 z-[60]" style={{ background:"#0a0a0f" }}>
-          <FilePanel files={fpFiles} onClose={()=>{ setFpOpen(false); setFpFiles([]); }}/>
+          <FilePanel
+            files={fpFiles}
+            expanded={false}
+            onToggleExpand={() => {}}
+            onClose={() => { setFpOpen(false); setFpFiles([]); }}
+          />
         </div>
       )}
     </div>

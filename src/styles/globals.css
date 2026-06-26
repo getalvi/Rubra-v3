@@ -23,4 +23,18 @@
     caret-color: #e8301f;
     transition: background-color 5000s ease-in-out 0s;
   }
+
+  /* Mobile: prevent text zoom on input focus (iOS) */
+  @media (max-width: 768px) {
+    input, textarea, select { font-size: 16px !important; }
+    /* Ensure the app fills the full mobile viewport including safe areas */
+    html, body, #root {
+      height: 100dvh;
+      height: -webkit-fill-available;
+    }
+    /* Smooth momentum scrolling on iOS */
+    .overflow-y-auto, .overflow-auto {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
 }
