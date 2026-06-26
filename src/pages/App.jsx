@@ -47,6 +47,7 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(true);
   const [fpFiles,   setFpFiles]   = useState([]);
   const [fpOpen,    setFpOpen]    = useState(false);
+  const [fpExpanded,setFpExpanded]= useState(false); // false=380px narrow, true=55vw wide
 
   const { sessions, activeId, messages, isStreaming, lastProject, streamStatus, sendMessage, newChat, selectSession, deleteSession, editMessage, retryMessage, renameSession, stopGeneration } = useChat();
 
@@ -105,13 +106,22 @@ export default function App() {
     setFpOpen(true);
   }, []);
 
-  /* Open ALL code blocks from a message as a multi-file project (enables file tree) */
+  /* Open ALL code blocks from a message as a multi-file project */
   const openProjectFP = useCallback((msg) => {
     const segs  = parseSegments(typeof msg.content === "string" ? msg.content : "");
     const files = extractFiles(segs, msg.id);
     if (files.length === 0) return;
     setFpFiles(files);
     setFpOpen(true);
+  }, []);
+
+  /* Open an array of files directly (called from ProjectFileCards) */
+  const openPanelWithFiles = useCallback((files, view) => {
+    if (!files?.length) return;
+    setFpFiles(files);
+    setFpOpen(true);
+    // If preview mode requested, we switch view inside FilePanel via key trick
+    if (view === "preview") setFpExpanded(false); // panel opens normal width
   }, []);
 
   if (loading) return <Splash/>;
@@ -187,7 +197,7 @@ export default function App() {
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
             {!hasMsg
               ? <Welcome isMobile={isMobile} displayName={user ? displayName : ""}/>
-              : <MessageList messages={messages} onEditMessage={editMessage} onRetry={retryMessage} onOpenFilePanel={openFP} onOpenProject={openProjectFP} onAskFollowUp={sendMessage} isStreaming={isStreaming}/>
+              : <MessageList messages={messages} onEditMessage={editMessage} onRetry={retryMessage} onOpenFilePanel={openFP} onOpenProject={openProjectFP} onOpenPanelWithFiles={openPanelWithFiles} onAskFollowUp={sendMessage} isStreaming={isStreaming}/>
             }
             {/* transient status / thinking indicator above input */}
             {isStreaming && (
@@ -212,8 +222,14 @@ export default function App() {
           {showFP && (
             <>
               <div className="flex-shrink-0 w-px" style={{ background:"#1a1a2a" }}/>
-              <div className="flex-shrink-0 h-full" style={{ width:520 }}>
-                <FilePanel files={fpFiles} onClose={()=>{ setFpOpen(false); setFpFiles([]); }}/>
+              <div className="flex-shrink-0 h-full overflow-hidden"
+                style={{ width: fpExpanded ? "55vw" : 400, transition:"width 0.2s ease", minWidth: fpExpanded ? 500 : 320 }}>
+                <FilePanel
+                  files={fpFiles}
+                  expanded={fpExpanded}
+                  onToggleExpand={() => setFpExpanded(v => !v)}
+                  onClose={() => { setFpOpen(false); setFpFiles([]); setFpExpanded(false); }}
+                />
               </div>
             </>
           )}

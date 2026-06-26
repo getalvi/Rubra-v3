@@ -279,7 +279,7 @@ function ActionRow({ msg, onEdit, onRetry, onCopy }) {
 /* ── Message content ── */
 const LONG_CODE_THRESHOLD = 25;
 
-function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onExplain, autoOpenedRef, projectFiles, projectFailedFiles, projectFramework }) {
+function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onExplain, autoOpenedRef, projectFiles, projectFailedFiles, projectFramework, onOpenPanelWithFiles }) {
   const [present, setPresent] = useState(false);
   const safe = typeof content === "string" ? content : String(content ?? "");
   const segs  = parseSegments(safe);
@@ -337,13 +337,14 @@ function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onE
         failedFiles={projectFailedFiles}
         framework={projectFramework}
         streaming={streaming}
+        onOpenPanel={onOpenPanelWithFiles}
       />
     </div>
   );
 }
 
 /* ── Main export ── */
-export default function MessageList({ messages, onEditMessage, onRetry, onOpenFilePanel, onOpenProject, onAskFollowUp, isStreaming }) {
+export default function MessageList({ messages, onEditMessage, onRetry, onOpenFilePanel, onOpenProject, onOpenPanelWithFiles, onAskFollowUp, isStreaming }) {
   const botRef = useRef(null);
   const [editing, setEditing] = useState(null);
   const autoOpenMap = useRef({}); // msgId -> { current: bool } — ensures each message auto-opens its panel at most once
@@ -395,6 +396,7 @@ export default function MessageList({ messages, onEditMessage, onRetry, onOpenFi
                   projectFiles={msg.projectFiles}
                   projectFailedFiles={msg.projectFailedFiles}
                   projectFramework={msg.projectFramework}
+                  onOpenPanelWithFiles={onOpenPanelWithFiles}
                 />
               </div>
               {!msg.streaming && (
