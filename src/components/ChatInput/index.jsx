@@ -49,7 +49,13 @@ const PILLS = ["Code </>", "Write", "Research", "Learn", "News"];
 const PASTE_LINES = 15;
 const PASTE_CHARS  = 800;
 const BASE = "https://getalvi-rubra-v3.hf.space";
-const ACCEPT = ["image/jpeg","image/png","image/gif","image/webp","text/plain","text/markdown","text/csv","application/json","application/xml","text/html","text/css","application/pdf"].join(",");
+const ACCEPT = [
+  "image/jpeg","image/png","image/gif","image/webp",
+  "text/plain","text/markdown","text/csv",
+  "application/json","application/xml","text/html","text/css",
+  "application/pdf",
+  "audio/mpeg","audio/wav","audio/ogg","audio/mp4","audio/flac","audio/webm",
+].join(",");
 
 function langGuess(text) {
   if (/^\s*(import |from |def |class |print\()/m.test(text)) return "python";

@@ -120,14 +120,25 @@ export default function App() {
     if (!files?.length) return;
     setFpFiles(files);
     setFpOpen(true);
-    // If preview mode requested, we switch view inside FilePanel via key trick
-    if (view === "preview") setFpExpanded(false); // panel opens normal width
+    if (view === "preview") setFpExpanded(false);
   }, []);
 
-  if (loading) return <Splash/>;
+  /* Start a new Project session — switches mode to Agent, focuses input */
+  const startProject = useCallback(() => {
+    newChat();
+    window.dispatchEvent(new CustomEvent("rubra:set-mode", { detail: "agent" }));
+    setTimeout(() => document.querySelector("textarea")?.focus(), 80);
+  }, [newChat]);
+
+  /* Wrap sendMessage to automatically inject the logged-in user's ID */
+  const send = useCallback((text, mode) => {
+    sendMessage(text, mode, user?.id || user?.email || null);
+  }, [sendMessage, user]);
 
   const hasMsg  = messages.length > 0;
   const showFP  = fpOpen && fpFiles.length > 0 && !isMobile;
+
+  if (loading) return <Splash/>;
 
   return (
     <div
@@ -200,7 +211,7 @@ export default function App() {
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
             {!hasMsg
               ? <Welcome isMobile={isMobile} displayName={user ? displayName : ""}/>
-              : <MessageList messages={messages} onEditMessage={editMessage} onRetry={retryMessage} onOpenFilePanel={openFP} onOpenProject={openProjectFP} onOpenPanelWithFiles={openPanelWithFiles} onAskFollowUp={sendMessage} isStreaming={isStreaming}/>
+              : <MessageList messages={messages} onEditMessage={editMessage} onRetry={retryMessage} onOpenFilePanel={openFP} onOpenProject={openProjectFP} onOpenPanelWithFiles={openPanelWithFiles} onAskFollowUp={send} isStreaming={isStreaming}/>
             }
             {/* transient status / thinking indicator above input */}
             {isStreaming && (
@@ -219,7 +230,7 @@ export default function App() {
               </div>
             )}
             <style>{`@keyframes pulseDot{0%,100%{opacity:.3}50%{opacity:1}}`}</style>
-            <ChatInput onSend={sendMessage} onStop={stopGeneration} isStreaming={isStreaming} disabled={!user}/>
+            <ChatInput onSend={send} onStop={stopGeneration} isStreaming={isStreaming} disabled={!user}/>
           </div>
 
           {showFP && (

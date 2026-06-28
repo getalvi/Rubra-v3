@@ -75,7 +75,7 @@ export function useChat() {
   }, [activeId]);
 
   /* ── Send (stream) ── */
-  const sendMessage = useCallback(async (text, mode = "auto") => {
+  const sendMessage = useCallback(async (text, mode = "auto", userId = null) => {
     if (!text.trim() || isStreaming) return;
     const sid      = ensureSession(text);
     const userMid  = uid();
@@ -95,7 +95,7 @@ export function useChat() {
     abortRef.current = controller;
 
     await streamChat({
-      message:text, sessionId:sid, mode,
+      message:text, sessionId:sid, mode, userId,
       signal: controller.signal,
       onToken: (_chunk, full) => {
         setSessions(prev => prev.map(s =>
