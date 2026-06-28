@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body, #root { width: 100%; height: 100%; overflow: hidden; }
+  body { background: #0a0a0f; color: #e8e8f0; -webkit-font-smoothing: antialiased; }
+  textarea, input { font-family: inherit; }
+  textarea::placeholder, input::placeholder { color: #3a3a55; }
+  * { scrollbar-width: thin; scrollbar-color: #1e1e2e transparent; }
+  *::-webkit-scrollbar { width: 4px; }
+  *::-webkit-scrollbar-thumb { background: #1e1e2e; border-radius: 4px; }
+
+  /* Prevent Chrome autofill from forcing a white background + dark text */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #e8e8f0 !important;
+    -webkit-box-shadow: 0 0 0 1000px #111118 inset !important;
+    box-shadow: 0 0 0 1000px #111118 inset !important;
+    caret-color: #e8301f;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* Mobile: prevent text zoom on input focus (iOS) */
+  @media (max-width: 768px) {
+    input, textarea, select { font-size: 16px !important; }
+    /* Ensure the app fills the full mobile viewport including safe areas */
+    html, body, #root {
+      height: 100dvh;
+      height: -webkit-fill-available;
+    }
+    /* Smooth momentum scrolling on iOS */
+    .overflow-y-auto, .overflow-auto {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+}

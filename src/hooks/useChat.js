@@ -1,0 +1,289 @@
+import { useState, useCallback, useRef, useEffect } from "react";
+import { streamChat } from "../services/api";
+import { uid } from "../utils/parse";
+
+const LS_SESSIONS_KEY = "rubra_sessions";
+const LS_ACTIVE_KEY   = "rubra_active_session";
+
+function makeTitle(text) {
+  return text.slice(0, 42).trim() + (text.length > 42 ? "…" : "");
+}
+
+/* ── Load persisted sessions from localStorage (survives browser refresh) ── */
+function loadPersistedSessions() {
+  try {
+    const raw = localStorage.getItem(LS_SESSIONS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Defensive: strip any mid-stream flags left over from a previous tab close
+    return parsed.map(s => ({
+      ...s,
+      messages: (s.messages || []).map(m => ({ ...m, streaming: false })),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function loadPersistedActiveId() {
+  try { return localStorage.getItem(LS_ACTIVE_KEY) || null; } catch { return null; }
+}
+
+export function useChat() {
+  const [sessions,    setSessions]    = useState(loadPersistedSessions);
+  const [activeId,    setActiveId]    = useState(loadPersistedActiveId);
+  const [isStreaming,  setIsStreaming]  = useState(false);
+  const [lastProject,  setLastProject]  = useState(null);
+  const [streamStatus, setStreamStatus] = useState("");
+  const abortRef = useRef(null);
+
+  /* ── Persist sessions to localStorage whenever they change ── */
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_SESSIONS_KEY, JSON.stringify(sessions));
+    } catch (e) {
+      // Quota exceeded — drop the oldest sessions and retry once
+      try {
+        const trimmed = [...sessions].sort((a, b) => b.ts - a.ts).slice(0, 20);
+        localStorage.setItem(LS_SESSIONS_KEY, JSON.stringify(trimmed));
+      } catch {}
+    }
+  }, [sessions]);
+
+  /* ── Persist the active session id whenever it changes ── */
+  useEffect(() => {
+    try {
+      if (activeId) localStorage.setItem(LS_ACTIVE_KEY, activeId);
+      else localStorage.removeItem(LS_ACTIVE_KEY);
+    } catch {}
+  }, [activeId]);
+
+  const activeSession = sessions.find(s => s.id === activeId) || null;
+  const messages      = activeSession?.messages || [];
+
+  /* ── Ensure a session exists, return its id ── */
+  const ensureSession = useCallback((firstMsg) => {
+    if (activeId) return activeId;
+    const id = uid();
+    setSessions(prev => [{
+      id, title: makeTitle(firstMsg),
+      ts: Date.now(), messageCount: 0, messages: [],
+    }, ...prev]);
+    setActiveId(id);
+    return id;
+  }, [activeId]);
+
+  /* ── Send (stream) ── */
+  const sendMessage = useCallback(async (text, mode = "auto") => {
+    if (!text.trim() || isStreaming) return;
+    const sid      = ensureSession(text);
+    const userMid  = uid();
+    const asstMid  = uid();
+    const userMsg  = { id:userMid, role:"user",      content:text, ts:Date.now() };
+    const asstMsg  = { id:asstMid, role:"assistant", content:"", ts:Date.now(), streaming:true, steps:[], mode };
+
+    setSessions(prev => prev.map(s =>
+      s.id === sid
+        ? { ...s, messages:[...s.messages, userMsg, asstMsg],
+            messageCount:(s.messageCount||0)+1, ts:Date.now() }
+        : s
+    ));
+    setIsStreaming(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    await streamChat({
+      message:text, sessionId:sid, mode,
+      signal: controller.signal,
+      onToken: (_chunk, full) => {
+        setSessions(prev => prev.map(s =>
+          s.id === sid
+            ? { ...s, messages: s.messages.map(m => m.id===asstMid ? {...m, content:full} : m) }
+            : s
+        ));
+      },
+      /* ── project_complete fires this immediately so App.jsx can open the panel ── */
+      onProject: (evt) => {
+        const files       = evt.files        || [];
+        const failedFiles = evt.failed_files || [];
+        const framework   = evt.framework    || "html";
+        setLastProject({ files, failedFiles, framework, ts: Date.now() });
+      },      onStep: (evt) => {
+        // Forward transient status text — cleared when streaming ends
+        if (evt.type === "status" && evt.text) setStreamStatus(evt.text);
+        setSessions(prev => prev.map(s =>
+          s.id === sid
+            ? { ...s, messages: s.messages.map(m => {
+                if (m.id !== asstMid) return m;
+                const steps = [...(m.steps || [])];
+
+                if (evt.type === "plan") {
+                  steps.push({
+                    type: "plan",
+                    label: `Plan: ${evt.sub_tasks?.length || 0} sub-tasks`,
+                    subTasks: evt.sub_tasks || [],
+                    done: true,
+                  });
+                  return { ...m, steps };
+                }
+
+                /* ── file_done: accumulate files path-keyed (order-safe) ── */
+                if (evt.type === "file_done") {
+                  const existingFiles = { ...(m.projectFilesByPath || {}) };
+                  existingFiles[evt.path] = {
+                    path:    evt.path,
+                    content: evt.content ?? existingFiles[evt.path]?.content ?? "",
+                    static:  !!evt.static,
+                    failed:  false,
+                  };
+                  // Also add a step entry so it shows in the step list
+                  const label = `${evt.static ? "Added" : "Generated"}: ${evt.path}`;
+                  steps.push({ type:"file_done", label, done:true,
+                    files:[{ name:evt.path, added: evt.content ? evt.content.split("\n").length : 0, removed:0 }]
+                  });
+                  return { ...m, steps, projectFilesByPath: existingFiles };
+                }
+
+                /* ── file_failed ── */
+                if (evt.type === "file_failed") {
+                  const existingFiles = { ...(m.projectFilesByPath || {}) };
+                  existingFiles[evt.path] = {
+                    path:    evt.path,
+                    content: existingFiles[evt.path]?.content ?? "",
+                    failed:  true,
+                    error:   evt.error,
+                  };
+                  steps.push({
+                    type:"file_failed", label:`Failed: ${evt.path || "unknown file"}`,
+                    error: evt.error || "Generation failed", done:true, failed:true,
+                  });
+                  return { ...m, steps, projectFilesByPath: existingFiles };
+                }
+
+                /* ── project_complete: authoritative final file list ── */
+                if (evt.type === "project_complete") {
+                  const byPath = {};
+                  for (const f of (evt.files || [])) byPath[f.path] = { ...f, failed:false };
+                  for (const f of (evt.failed_files || [])) {
+                    byPath[f.path] = { ...(byPath[f.path] || { path:f.path }), failed:true, error:f.error };
+                  }
+                  steps.push({
+                    type:"project_complete",
+                    label: `Project ready — ${(evt.files||[]).length} file${(evt.files||[]).length!==1?"s":""}`,
+                    done:true,
+                    files:(evt.files||[]).map(f=>({ name:f.path, added:f.content?.split("\n").length||0, removed:0 })),
+                  });
+                  return {
+                    ...m, steps,
+                    projectFilesByPath: byPath,
+                    projectFiles:       evt.files        || [],
+                    projectFailedFiles: evt.failed_files || [],
+                    projectFramework:   evt.framework    || "",
+                  };
+                }
+
+                const last  = steps[steps.length - 1];
+                const label = evt.text || evt.name || evt.agent || evt.intent || "Working…";
+
+                // Extract file diff info if present (e.g. { files: [{name:"main.py", added:77, removed:7}] })
+                const files = evt.files || (evt.path ? [{ name: evt.path, added: evt.added||0, removed: evt.removed||0 }] : []);
+                // Terminal output from script/compile events
+                const output = evt.output || evt.stdout || null;
+
+                if (!last || last.type !== evt.type || last.label !== label) {
+                  steps.push({
+                    type:   evt.type,
+                    label,
+                    done:   evt.type === "tool_result",
+                    files:  files.length > 0 ? files : undefined,
+                    output: output || undefined,
+                  });
+                } else {
+                  // Update existing step: add output, mark done, append file badges
+                  if (evt.type === "tool_result") last.done = true;
+                  if (output && !last.output) last.output = output;
+                  if (files.length > 0) last.files = [...(last.files||[]), ...files];
+                }
+                return { ...m, steps };
+              })}
+            : s
+        ));
+      },
+      onDone: (full, meta) => {
+        setSessions(prev => prev.map(s =>
+          s.id === sid
+            ? { ...s, messages: s.messages.map(m =>
+                m.id===asstMid ? {...m, content:full||m.content, streaming:false, stopped: !!meta?.stopped} : m
+              )}
+            : s
+        ));
+        setIsStreaming(false);
+        setStreamStatus("");
+        abortRef.current = null;
+      },
+      onError: (err) => {
+        setSessions(prev => prev.map(s =>
+          s.id === sid
+            ? { ...s, messages: s.messages.map(m =>
+                m.id===asstMid ? {...m, content:`⚠️ ${err.message}`, streaming:false, error:true} : m
+              )}
+            : s
+        ));
+        setIsStreaming(false);
+        setStreamStatus("");
+        abortRef.current = null;
+      },
+    });
+  }, [isStreaming, ensureSession]);
+
+  /* ── Stop the current generation ── */
+  const stopGeneration = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
+  /* ── Edit user message → trim + resend ── */
+  const editMessage = useCallback((msgId, newContent) => {
+    if (!activeId || isStreaming) return;
+    setSessions(prev => prev.map(s => {
+      if (s.id !== activeId) return s;
+      const idx = s.messages.findIndex(m => m.id === msgId);
+      return idx === -1 ? s : { ...s, messages: s.messages.slice(0, idx) };
+    }));
+    sendMessage(newContent);
+  }, [activeId, isStreaming, sendMessage]);
+
+  /* ── Retry: find preceding user msg, resend ── */
+  const retryMessage = useCallback((asstMsg) => {
+    if (!activeId || isStreaming) return;
+    const msgs = sessions.find(s => s.id === activeId)?.messages || [];
+    const idx  = msgs.findIndex(m => m.id === asstMsg.id);
+    const user = idx > 0 ? msgs[idx - 1] : null;
+    if (!user || user.role !== "user") return;
+    setSessions(prev => prev.map(s =>
+      s.id === activeId ? { ...s, messages: s.messages.slice(0, idx-1) } : s
+    ));
+    sendMessage(user.content);
+  }, [activeId, isStreaming, sessions, sendMessage]);
+
+  const newChat        = useCallback(() => setActiveId(null), []);
+  const selectSession  = useCallback(id => setActiveId(id), []);
+  const deleteSession  = useCallback(id => {
+    setSessions(prev => prev.filter(s => s.id !== id));
+    if (activeId === id) setActiveId(null);
+  }, [activeId]);
+
+  /* ── Rename a session's title manually ── */
+  const renameSession = useCallback((id, newTitle) => {
+    const title = newTitle.trim();
+    if (!title) return;
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, title } : s));
+  }, []);
+
+  return {
+    sessions, activeId, messages, isStreaming, lastProject, streamStatus,
+    sendMessage, newChat, selectSession, deleteSession,
+    editMessage, retryMessage, renameSession, stopGeneration,
+  };
+}
