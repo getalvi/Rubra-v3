@@ -215,6 +215,18 @@ export default function ChatInput({ onSend, onStop, isStreaming, disabled }) {
   const textRef = useRef(null);
   const fileRef = useRef(null);
 
+  // Listen for mode-change events from sidebar Project button
+  useEffect(() => {
+    const handler = (e) => {
+      const m = MODES.find(x => x.mode === e.detail || x.id === e.detail);
+      if (m) setModeId(m.id);
+      // Focus the textarea so user can start typing immediately
+      setTimeout(() => textRef.current?.focus(), 50);
+    };
+    window.addEventListener("rubra:set-mode", handler);
+    return () => window.removeEventListener("rubra:set-mode", handler);
+  }, []);
+
   const getMode = () => (MODES.find(m => m.id === modeId) || MODES[0]).mode;
   const resetH  = () => { if (textRef.current) textRef.current.style.height = "auto"; };
 

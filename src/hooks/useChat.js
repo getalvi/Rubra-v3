@@ -81,7 +81,7 @@ export function useChat() {
     const userMid  = uid();
     const asstMid  = uid();
     const userMsg  = { id:userMid, role:"user",      content:text, ts:Date.now() };
-    const asstMsg  = { id:asstMid, role:"assistant", content:"",   ts:Date.now(), streaming:true, steps:[] };
+    const asstMsg  = { id:asstMid, role:"assistant", content:"", ts:Date.now(), streaming:true, steps:[], mode };
 
     setSessions(prev => prev.map(s =>
       s.id === sid

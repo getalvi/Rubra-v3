@@ -48,13 +48,13 @@ function TextBlock({ text }) {
       if (line.startsWith("# "))  return <h1 key={i} className="font-display font-bold text-lg text-white mt-3 mb-1"><Inline text={line.slice(2)}/></h1>;
       if (line.startsWith("## ")) return <h2 key={i} className="font-display font-bold text-base text-white mt-3 mb-1"><Inline text={line.slice(3)}/></h2>;
       if (line.startsWith("### ")) return <h3 key={i} className="font-semibold text-[#c0c0d8] mt-2 mb-1"><Inline text={line.slice(4)}/></h3>;
-      if (line.match(/^[-•*] /)) return <div key={i} className="flex gap-2 my-0.5"><span style={{color:"#3a3a55",flexShrink:0,marginTop:3,fontSize:9}}>●</span><span><Inline text={line.slice(2)}/></span></div>;
+      if (line.match(/^[-•*] /)) return <div key={i} className="flex gap-2 my-0.5"><span style={{color:"#6060808",flexShrink:0,marginTop:3,fontSize:9}}>●</span><span><Inline text={line.slice(2)}/></span></div>;
       if (line.match(/^\d+\. /)) {
         const [n,...r]=line.split(". ");
-        return <div key={i} className="flex gap-2 my-0.5"><span className="text-[#3a3a55] flex-shrink-0 min-w-4 font-medium">{n}.</span><span><Inline text={r.join(". ")}/></span></div>;
+        return <div key={i} className="flex gap-2 my-0.5"><span className="text-[#6a6a8a] flex-shrink-0 min-w-4 font-medium">{n}.</span><span><Inline text={r.join(". ")}/></span></div>;
       }
       if (line.match(/^---+$/)) return <hr key={i} className="my-3 border-[#1e1e2e]"/>;
-      if (line.startsWith("> ")) return <blockquote key={i} className="border-l-2 pl-3 my-1 italic" style={{borderColor:"#e8301f",color:"#6a6a8a"}}><Inline text={line.slice(2)}/></blockquote>;
+      if (line.startsWith("> ")) return <blockquote key={i} className="border-l-2 pl-3 my-1 italic" style={{borderColor:"#e8301f",color:"#9090a8"}}><Inline text={line.slice(2)}/></blockquote>;
       return <p key={i} className="leading-relaxed my-0.5"><Inline text={line}/></p>;
     })}</>
   );
@@ -279,7 +279,7 @@ function ActionRow({ msg, onEdit, onRetry, onCopy }) {
 /* ── Message content ── */
 const LONG_CODE_THRESHOLD = 25;
 
-function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onExplain, autoOpenedRef, projectFiles, projectFailedFiles, projectFramework, onOpenPanelWithFiles }) {
+function MsgContent({ content, streaming, steps, mode, onOpenPanel, onOpenProject, onExplain, autoOpenedRef, projectFiles, projectFailedFiles, projectFramework, onOpenPanelWithFiles }) {
   const [present, setPresent] = useState(false);
   const safe = typeof content === "string" ? content : String(content ?? "");
   const segs  = parseSegments(safe);
@@ -299,8 +299,8 @@ function MsgContent({ content, streaming, steps, onOpenPanel, onOpenProject, onE
   }, [streaming]); // eslint-disable-line
 
   return (
-    <div className="text-sm leading-relaxed" style={{ color:"#b0b0c8" }}>
-      <AgentSteps steps={steps} streaming={streaming} hasTokens={!!content?.trim()}/>
+    <div className="text-sm leading-relaxed" style={{ color:"#d4d4e8" }}>
+      <AgentSteps steps={steps} streaming={streaming} hasTokens={!!content?.trim()} mode={mode}/>
       {!streaming && hasCode && (
         <div className="mb-3 flex items-center gap-2 flex-wrap">
           <button onClick={()=>setPresent(v=>!v)}
@@ -388,7 +388,7 @@ export default function MessageList({ messages, onEditMessage, onRetry, onOpenFi
                     ⚠ Backend error — check the connection
                   </div>
                 )}
-                <MsgContent content={msg.content} streaming={msg.streaming} steps={msg.steps}
+                <MsgContent content={msg.content} streaming={msg.streaming} steps={msg.steps} mode={msg.mode}
                   autoOpenedRef={getAutoOpenRef(msg.id)}
                   onOpenPanel={seg=>onOpenFilePanel?.({lang:seg.lang,content:seg.content,filename:seg.filename})}
                   onOpenProject={()=>onOpenProject?.(msg)}

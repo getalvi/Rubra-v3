@@ -158,6 +158,7 @@ export default function App() {
           expanded={panelOpen}
           onToggle={() => setPanelOpen(v => !v)}
           onNewChat={newChat}
+          onStartProject={startProject}
           onSelectSession={selectSession} onDeleteSession={deleteSession} onRenameSession={renameSession}
           activeSessionId={activeId} sessions={sessions}
           isMobile={false}
@@ -171,6 +172,7 @@ export default function App() {
           expanded={true}
           onToggle={() => {}}
           onNewChat={newChat}
+          onStartProject={startProject}
           onSelectSession={selectSession} onDeleteSession={deleteSession} onRenameSession={renameSession}
           activeSessionId={activeId} sessions={sessions}
           isMobile={true} mobileOpen={mobOpen} onMobileClose={()=>setMobOpen(false)}

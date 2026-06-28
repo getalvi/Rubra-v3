@@ -13,6 +13,7 @@ const TrashI = () => <Ico d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" s={14}/>;
 const PenI   = () => <Ico d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" s={14}/>;
 const OutI   = () => <Ico d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" s={16}/>;
 const GearI  = () => <Ico d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>;
+const FolderI = () => <Ico d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" s={16}/>;
 const NewI   = () => <Ico d="M12 5v14M5 12h14" s={20}/>;
 const SearchI= () => <Ico d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" s={18}/>;
 
@@ -38,7 +39,7 @@ function IconBtn({ onClick, children, title, className="" }) {
  */
 export default function Sidebar({
   expanded, onToggle,
-  onNewChat, onSelectSession, onDeleteSession, onRenameSession,
+  onNewChat, onStartProject, onSelectSession, onDeleteSession, onRenameSession,
   activeSessionId, sessions,
   isMobile, mobileOpen, onMobileClose,
   user, displayName, initials, onSignOut,
@@ -106,29 +107,52 @@ export default function Sidebar({
           </IconBtn>
         </div>
 
-        {/* ═══ NEW CHAT ═══ */}
-        <div className="px-2.5 mb-2 flex-shrink-0">
+        {/* ═══ NEW CHAT + PROJECT ═══ */}
+        <div className="px-2.5 mb-2 flex-shrink-0 flex flex-col gap-1.5">
           {showExpanded ? (
-            <button
-              onClick={() => { onNewChat(); if (isMobile) onMobileClose(); }}
-              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap overflow-hidden transition-colors duration-150"
-              style={{ background:"#7b241c", color:"#ffffff" }}
-              onMouseEnter={e => e.currentTarget.style.background="#5e1b15"}
-              onMouseLeave={e => e.currentTarget.style.background="#7b241c"}
-            >
-              <PlusI/> New Chat
-            </button>
+            <>
+              <button
+                onClick={() => { onNewChat(); if (isMobile) onMobileClose(); }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap overflow-hidden transition-colors duration-150"
+                style={{ background:"#7b241c", color:"#ffffff" }}
+                onMouseEnter={e => e.currentTarget.style.background="#5e1b15"}
+                onMouseLeave={e => e.currentTarget.style.background="#7b241c"}
+              >
+                <PlusI/> New Chat
+              </button>
+              <button
+                onClick={() => { onStartProject?.(); if (isMobile) onMobileClose(); }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap overflow-hidden transition-colors duration-150"
+                style={{ background:"#161624", color:"#a0a0c0", border:"1px solid #252535" }}
+                onMouseEnter={e => { e.currentTarget.style.background="#1e1e30"; e.currentTarget.style.color="#ffffff"; }}
+                onMouseLeave={e => { e.currentTarget.style.background="#161624"; e.currentTarget.style.color="#a0a0c0"; }}
+              >
+                <FolderI/> Project
+              </button>
+            </>
           ) : (
-            <button
-              onClick={() => { onNewChat(); }}
-              title="New chat"
-              className="w-9 h-9 mx-auto flex items-center justify-center rounded-lg transition-colors duration-150"
-              style={{ background:"#7b241c", color:"#ffffff" }}
-              onMouseEnter={e => e.currentTarget.style.background="#5e1b15"}
-              onMouseLeave={e => e.currentTarget.style.background="#7b241c"}
-            >
-              <PlusI/>
-            </button>
+            <div className="flex flex-col items-center gap-1.5">
+              <button
+                onClick={() => { onNewChat(); }}
+                title="New chat"
+                className="w-9 h-9 mx-auto flex items-center justify-center rounded-lg transition-colors duration-150"
+                style={{ background:"#7b241c", color:"#ffffff" }}
+                onMouseEnter={e => e.currentTarget.style.background="#5e1b15"}
+                onMouseLeave={e => e.currentTarget.style.background="#7b241c"}
+              >
+                <PlusI/>
+              </button>
+              <button
+                onClick={() => { onStartProject?.(); }}
+                title="Project"
+                className="w-9 h-9 mx-auto flex items-center justify-center rounded-lg transition-colors duration-150"
+                style={{ background:"#161624", color:"#8080a0", border:"1px solid #252535" }}
+                onMouseEnter={e => { e.currentTarget.style.background="#1e1e30"; e.currentTarget.style.color="#ffffff"; }}
+                onMouseLeave={e => { e.currentTarget.style.background="#161624"; e.currentTarget.style.color="#8080a0"; }}
+              >
+                <FolderI/>
+              </button>
+            </div>
           )}
         </div>
 
