@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import WaveBackground from "../components/WaveBackground";
 import Sidebar        from "../components/Sidebar/index.jsx";
 import Welcome        from "../components/Welcome/index.jsx";
@@ -16,6 +17,8 @@ const Ico = ({d,s=20})=><svg width={s} height={s} viewBox="0 0 24 24" fill="none
 const HamI  = ()=><Ico d="M3 6h18M3 12h18M3 18h18"/>;
 const NewI  = ()=><Ico d="M12 5v14M5 12h14" s={18}/>;
 const GearI = ()=><Ico d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" s={18}/>;
+
+const FlaskI = ()=><Ico d="M9 3h6M8 3v6l-4 9a1 1 0 0 0 .9 1.5h14.2A1 1 0 0 0 20 18l-4-9V3" s={18}/>;
 
 function IBtn({onClick,children,title}){
   return(
@@ -41,6 +44,7 @@ function Splash(){
 }
 
 export default function App() {
+  const navigate = useNavigate();
   const { user, loading, healthy, displayName, initials, signUp, signIn, signOut, resetPassword } = useAuth();
   const [isMobile,  setIsMobile]  = useState(false);
   const [mobOpen,   setMobOpen]   = useState(false);
@@ -168,6 +172,7 @@ export default function App() {
         <Sidebar
           expanded={panelOpen}
           onToggle={() => setPanelOpen(v => !v)}
+          onPlayground={() => navigate("/playground")}
           onNewChat={newChat}
           onStartProject={startProject}
           onSelectSession={selectSession} onDeleteSession={deleteSession} onRenameSession={renameSession}
@@ -202,7 +207,10 @@ export default function App() {
               <span className="w-4 h-4 rounded-full" style={{background:"radial-gradient(circle at 38% 36%,#ff5540,#c0392b)"}}/>
               <span className="font-display font-extrabold text-base text-white tracking-wider">RUBRA</span>
             </div>
-            <IBtn onClick={newChat} title="New chat"><NewI/></IBtn>
+            <div className="flex items-center gap-1">
+              <IBtn onClick={()=>navigate("/playground")} title="Playground"><FlaskI/></IBtn>
+              <IBtn onClick={newChat} title="New chat"><NewI/></IBtn>
+            </div>
           </div>
         )}
 

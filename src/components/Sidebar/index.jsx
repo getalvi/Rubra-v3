@@ -43,6 +43,7 @@ export default function Sidebar({
   activeSessionId, sessions,
   isMobile, mobileOpen, onMobileClose,
   user, displayName, initials, onSignOut,
+  onPlayground,
 }) {
   const [hov, setHov]       = useState(null);
   const [q, setQ]           = useState("");
@@ -102,9 +103,16 @@ export default function Sidebar({
               <span className="font-display font-extrabold text-sm text-white tracking-wider whitespace-nowrap">RUBRA</span>
             </div>
           )}
-          <IconBtn onClick={isMobile ? onMobileClose : onToggle} title={showExpanded ? "Collapse sidebar" : "Expand sidebar"}>
-            <HamI/>
-          </IconBtn>
+          <div className="flex items-center gap-1">
+            {onPlayground && (
+              <IconBtn onClick={onPlayground} title="Playground">
+                <FolderI/>
+              </IconBtn>
+            )}
+            <IconBtn onClick={isMobile ? onMobileClose : onToggle} title={showExpanded ? "Collapse sidebar" : "Expand sidebar"}>
+              <HamI/>
+            </IconBtn>
+          </div>
         </div>
 
         {/* ═══ NEW CHAT + PROJECT ═══ */}
